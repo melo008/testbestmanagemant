@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>好管理 · 房租收款系統</title>
+<title>好管理 測試版 · 房租收款系統</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -301,6 +301,10 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
 .deposit-opt-title{font-size:13px;font-weight:600;}
 .deposit-opt-sub{font-size:11px;color:var(--text2);margin-top:2px;}
 
+
+/* 測試版橫幅 */
+.test-banner{position:fixed;bottom:60px;right:12px;background:#EF4444;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:9999;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+@media(min-width:769px){.test-banner{bottom:12px;}}
 /* ── 待修逾期紅字橫幅 ── */
 .overdue-banner{display:none;position:fixed;top:0;left:230px;right:0;z-index:51;background:#FEE2E2;border-bottom:2px solid var(--red);padding:9px 20px;font-size:13px;color:var(--red-dk);}
 .overdue-banner.show{display:block;}
@@ -393,8 +397,8 @@ tbody tr:hover{background:var(--surface2);}
   <div class="auth-card">
     <div class="auth-logo">
       <div class="mark">🏢</div>
-      <h1>好管理</h1>
-      <p>房租收款管理系統</p>
+      <h1>好管理 測試版</h1>
+      <p>房租收款管理系統（測試版）</p>
     </div>
     <div class="auth-err" id="auth-err">帳號或密碼錯誤，請再試一次</div>
     <div class="form-field">
@@ -413,8 +417,8 @@ tbody tr:hover{background:var(--surface2);}
 <div id="app-screen" class="layout" style="display:none;">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="app-name">🏢 好管理</div>
-      <div class="app-sub">房租收款管理系統</div>
+      <div class="app-name">🏢 好管理 測試版</div>
+      <div class="app-sub">房租收款管理系統（測試版）</div>
     </div>
     <div class="sidebar-user">
       <div class="user-avatar" id="nav-avatar" style="background:#E6F1FB;color:#185FA5;">A</div>
@@ -2494,7 +2498,7 @@ function doExportCSV(){
   });
   const addrLabel=addrFilter==='all'?'全部':addrFilter;
   const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`好管理_${addrLabel}_${k}.csv`; a.click();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`好管理測試版_${addrLabel}_${k}.csv`; a.click();
   closeModal('export-modal'); toast('CSV 匯出完成');
 }
 
@@ -3100,5 +3104,6 @@ function checkExpiryNotices(){
 
 
 </script>
+<div class="test-banner">🧪 測試版</div>
 </body>
 </html>
