@@ -1308,6 +1308,7 @@ async function load(){
   }catch(e){
     console.error('Supabase load error:',e);
     toast('⚠ 載入失敗，請檢查網路連線');
+  rooms.sort((a,b)=>roomNameSort(a,b));
   } finally { showLoading(false); }
 }
 
@@ -1489,8 +1490,6 @@ function renderAddrBar(){
 function setAddr(a){ activeAddr=a; renderAddrBar(); renderRooms(); }
 
 function autoFillDeposit(){
-  // 只在新增房間時自動帶入（編輯時不覆蓋原本的押金）
-  if(editingRoomId) return;
   const rent=parseInt(document.getElementById('f-rent').value)||0;
   const depositEl=document.getElementById('f-deposit');
   if(depositEl&&rent>0) depositEl.value=rent*2;
@@ -1625,8 +1624,8 @@ function renderDashboard(){
         <td style="padding:7px 12px;font-family:'DM Mono',monospace">$${r.rent.toLocaleString()}</td>
       </tr>`).join('')+'</table>';
   };
-  mkList(unpaid.concat(partial),document.getElementById('dash-unpaid'));
-  mkList(paid,document.getElementById('dash-paid'));
+  mkList(sortedRooms(unpaid.concat(partial)),document.getElementById('dash-unpaid'));
+  mkList(sortedRooms(paid),document.getElementById('dash-paid'));
 }
 
 // ── ROOMS ──
@@ -1644,6 +1643,7 @@ function renderRooms(){
   });
   const grid=document.getElementById('room-grid'); if(!grid) return;
   if(!list.length){ grid.innerHTML='<div class="empty"><div class="eico">🏠</div>沒有房間，點右上角「新增房間」開始使用</div>'; return; }
+  list.sort((a,b)=>roomNameSort(a,b));
   grid.innerHTML=list.map(r=>{
     const s=getStatus(r.id);
     const bc=s==='paid'?'b-paid':s==='partial'?'b-partial':'b-unpaid';
@@ -1727,6 +1727,7 @@ function renderTenants(){
     if(activeTenantAddr!=='all'&&(r.addr||'未分類')!==activeTenantAddr) return false;
     return (r.tenant||'').toLowerCase().includes(search)||(r.phone||'').includes(search)||(r.addr||'').toLowerCase().includes(search)||(r.name||'').toLowerCase().includes(search);
   });
+  list.sort((a,b)=>roomNameSort(a,b));
   if(!list.length){ tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:1.5rem">無租客資料</td></tr>'; return; }
   const today=new Date(); today.setHours(0,0,0,0);
   const oneMonth=new Date(today); oneMonth.setMonth(oneMonth.getMonth()+1);
@@ -1786,6 +1787,49 @@ function getActualRentLabel(r, pay){
   return `$${(r.rent||0).toLocaleString()}`;
 }
 
+
+// ── 房間名稱自然排序 ──
+// 優先順序：純數字(101) > 數字+英文(1A) > 數字+中文(1店面) > 純文字
+function roomNameSort(a, b){
+  const nameA = (typeof a === 'string') ? a : (a.name||'');
+  const nameB = (typeof b === 'string') ? b : (b.name||'');
+
+  function getType(s){
+    const m = s.match(/^(\d+)(.*)/);
+    if(!m) return 3; // 無數字前綴
+    const rest = m[2];
+    if(!rest) return 0;           // 純數字
+    if(/^[A-Za-z]/.test(rest)) return 1; // 數字+英文
+    return 2;                      // 數字+中文
+  }
+  function getNum(s){
+    const m = s.match(/^(\d+)/);
+    return m ? parseInt(m[1]) : 999999;
+  }
+  function getRest(s){
+    const m = s.match(/^\d+(.*)/);
+    return m ? m[1] : s;
+  }
+
+  const typeA = getType(nameA);
+  const typeB = getType(nameB);
+
+  // 先按類型排
+  if(typeA !== typeB) return typeA - typeB;
+
+  // 同類型，按數字排
+  const numA = getNum(nameA);
+  const numB = getNum(nameB);
+  if(numA !== numB) return numA - numB;
+
+  // 數字相同，按後綴排
+  return getRest(nameA).localeCompare(getRest(nameB), 'zh-TW', {numeric:true});
+}
+
+function sortedRooms(arr){
+  return [...arr].sort((a,b)=>roomNameSort(a,b));
+}
+
 function renderHistAddrBar(){
   const bar=document.getElementById('hist-addr-bar'); if(!bar) return;
   const addrNames=isOwner()?getAddrNames():getVisibleAddrNames();
@@ -1803,6 +1847,7 @@ function renderHistory(){
   const allVis=getVisibleRooms();
   const visRooms=histAddr==='all'?allVis:allVis.filter(r=>(r.addr||'未分類')===histAddr);
   if(!visRooms.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:1.5rem">無資料</td></tr>'; return; }
+  visRooms.sort((a,b)=>roomNameSort(a,b));
   const isVacantRoom = r => !r.tenant||!r.tenant.trim();
   const hk=histMonthKey();
   tbody.innerHTML=visRooms.map(r=>{
@@ -1899,6 +1944,7 @@ function renderReport(){
   const today=new Date(); today.setHours(0,0,0,0);
 
   // 分類
+  filtered.sort((a,b)=>roomNameSort(a,b));
   const vacant=filtered.filter(r=>!r.tenant||!r.tenant.trim());
   const rented=filtered.filter(r=>r.tenant&&r.tenant.trim());
   const paid=rented.filter(r=>getStatus(r.id)==='paid');
@@ -1911,7 +1957,7 @@ function renderReport(){
     return parseLocalDate(r.checkout)<=today;
   });
   // 押金統計：從 depositData 抓實際退還金額
-  const depositFiltered=filtered.filter(r=>r.deposit>0);
+  const depositFiltered=filtered.filter(r=>r.deposit>0&&r.tenant&&r.tenant.trim()); // 空房不計押金
   // 已退還（現有房間）= depositData.returned
   const depositReturned=depositFiltered.filter(r=>r.depositData?.returned);
   // 待退還 = 已點交 但 未退押金
@@ -2195,6 +2241,7 @@ function saveRoom(){
   const data={name,rent:parseInt(document.getElementById('f-rent').value)||0,tenant:document.getElementById('f-tenant').value.trim(),phone:document.getElementById('f-phone').value.trim(),emergency:document.getElementById('f-emergency').value.trim(),checkin:document.getElementById('f-checkin').value,checkout:document.getElementById('f-checkout').value,deposit:parseInt(document.getElementById('f-deposit').value)||0,elecType:isPrepay?'prepay':'monthly',elec:parseInt(document.getElementById('f-elec').value)||0,elecAcc:document.getElementById('f-elec-acc').value.trim(),elecPrice:parseFloat(document.getElementById('f-elec-price').value)||0,elecBalance:parseInt(document.getElementById('f-elec-balance').value)||0,acc:document.getElementById('f-acc').value.trim(),note:document.getElementById('f-note').value.trim(),addr};
   if(editingRoomId){ const r=rooms.find(x=>x.id===editingRoomId); if(r) Object.assign(r,data); }
   else rooms.push({...data,id:'r'+Date.now()});
+  rooms.sort((a,b)=>roomNameSort(a,b));
   save(); closeModal('room-modal'); renderAll(); toast(editingRoomId?'已更新':'房間已新增');
 }
 function topupElec(id){
@@ -3073,6 +3120,7 @@ function renderMgrRpt(){
 
   // 房間列表
   const tbody=document.getElementById('mgrrpt-room-tbody'); if(!tbody) return;
+  filtered.sort((a,b)=>roomNameSort(a,b));
   if(!filtered.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">此地址無房間</td></tr>'; return; }
   tbody.innerHTML=filtered.map(r=>{
     const isVacant=!r.tenant||!r.tenant.trim();
