@@ -539,6 +539,7 @@ tbody tr:hover{background:var(--surface2);}
         <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">租客資料</div><div class="pg-sub">所有租客的詳細資訊</div></div></div>
         <button class="btn btn-primary" onclick="openRoomModal()">+ 新增房間</button>
       </div>
+      <div class="addr-bar" id="tenant-addr-bar" style="margin-bottom:.75rem;"></div>
       <div class="ctrl">
         <div class="srch" style="max-width:260px;"><span class="srch-ico">🔍</span><input type="text" id="tenant-search" placeholder="搜尋姓名、電話、地址…" oninput="renderTenants()"></div>
       </div>
@@ -700,6 +701,7 @@ tbody tr:hover{background:var(--surface2);}
         </div>
         <div class="srch" style="max-width:260px;"><span class="srch-ico">🔍</span><input type="text" id="archive-search" placeholder="搜尋房間或姓名…" oninput="renderArchive()"></div>
       </div>
+      <div class="addr-bar" id="archive-addr-bar" style="margin-bottom:.75rem;"></div>
       <div class="tbl-wrap">
         <table>
           <thead><tr><th>房間</th><th>地址</th><th>租客姓名</th><th>入住日</th><th>退租日</th><th>押金</th><th>歸檔時間</th><th>操作</th></tr></thead>
@@ -1578,6 +1580,7 @@ function renderAll(){
   const ds=document.getElementById('dash-sub'); if(ds) ds.textContent=ml+' 收款狀況';
   updateHistMonthDisplay(); renderHistAddrBar();
   renderDashboard(); renderRooms(); renderTenants(); renderHistory(); renderReport(); renderManagers(); renderAddrMgr(); renderHandover(); renderArchive(); renderMgrRpt();
+  renderTenantAddrBar(); renderArchiveAddrBar();
   renderAddrBar(); renderAddrStats(); checkExpiryNotices(); checkOverdueRepairs();
   updateBadge();
   // 管理人帳號頁：切換說明文字
@@ -1703,11 +1706,28 @@ function renderRooms(){
 }
 
 // ── TENANTS ──
+let activeTenantAddr='all';
+function renderTenantAddrBar(){
+  const bar=document.getElementById('tenant-addr-bar'); if(!bar) return;
+  const addrNames=isOwner()?getAddrNames():getVisibleAddrNames();
+  const visR=getVisibleRooms().filter(r=>r.tenant&&r.tenant.trim());
+  const counts={};
+  addrNames.forEach(a=>counts[a]=0);
+  visR.forEach(r=>{ const a=r.addr||'未分類'; if(counts[a]!==undefined) counts[a]++; else counts[a]=1; });
+  bar.innerHTML=`<button class="addr-pill${activeTenantAddr==='all'?' active':''}" onclick="setTenantAddr('all')">全部<span class="addr-badge">${visR.length}</span></button>`+
+    addrNames.filter(a=>counts[a]>0).map(a=>`<button class="addr-pill${activeTenantAddr===a?' active':''}" onclick="setTenantAddr('${a}')">${a}<span class="addr-badge">${counts[a]}</span></button>`).join('');
+}
+function setTenantAddr(a){ activeTenantAddr=a; renderTenantAddrBar(); renderTenants(); }
+
 function renderTenants(){
   const search=(document.getElementById('tenant-search')||{value:''}).value.toLowerCase();
   const tbody=document.getElementById('tenant-tbody'); if(!tbody) return;
-  const list=getVisibleRooms().filter(r=>(r.tenant||'').toLowerCase().includes(search)||(r.phone||'').includes(search)||(r.addr||'').toLowerCase().includes(search)||(r.name||'').toLowerCase().includes(search));
-  if(!list.length){ tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:1.5rem">無租客資料</td></tr>'; return; }
+  const list=getVisibleRooms().filter(r=>{
+    if(!r.tenant||!r.tenant.trim()) return false;
+    if(activeTenantAddr!=='all'&&(r.addr||'未分類')!==activeTenantAddr) return false;
+    return (r.tenant||'').toLowerCase().includes(search)||(r.phone||'').includes(search)||(r.addr||'').toLowerCase().includes(search)||(r.name||'').toLowerCase().includes(search);
+  });
+  if(!list.length){ tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:1.5rem">無租客資料</td></tr>'; return; }
   const today=new Date(); today.setHours(0,0,0,0);
   const oneMonth=new Date(today); oneMonth.setMonth(oneMonth.getMonth()+1);
   tbody.innerHTML=list.map(r=>{
@@ -1909,10 +1929,10 @@ function renderReport(){
 
   const [ry,rm]=[curYear,curMonth+1];
   const mk1=monthKey();
-  const elecPrepayIncome=filtered.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+  const elecPrepayIncome=rented.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
     const done=(r.elecTopups||[]).filter(t=>{
       if(t.status!=='done') return false;
-      // 用 doneAt (ISO) 比對月份，date 是中文格式不可靠
+      if(t.doneWhenVacant) return false; // 空房時儲電不計入收入
       const raw=t.doneAt||t.date||'';
       const d=raw?new Date(raw):null;
       if(!d||isNaN(d)) return false;
@@ -1974,6 +1994,35 @@ function renderReport(){
 
   // 報表表格
   const tbody=document.getElementById('rpt-tbody'); if(!tbody) return;
+  // 本月已歸檔租客（只顯示本月退租的，即 checkout 在本報表月份）
+  const archivedThisView=(tenantArchive||[]).filter(a=>{
+    if(activeRptAddr!=='all'&&(a.addr||'未分類')!==activeRptAddr) return false;
+    if(!a.checkout) return false;
+    const d=new Date(a.checkout);
+    if(isNaN(d)) return false;
+    // 退租日在本月
+    return d.getFullYear()===ry && d.getMonth()+1===rm;
+  });
+  // 合併現有房間和已歸檔租客的報表行
+  const archivedRows=archivedThisView.map(a=>{
+    const pay=(payments[mk1]&&payments[mk1][a.roomId])||{};
+    const s=pay.status||'unpaid';
+    const bc=s==='paid'?'b-paid':s==='partial'?'b-partial':'b-unpaid';
+    const bt=s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
+    const timeStr=pay.paidAt?formatDT(pay.paidAt):'—';
+    return `<tr style="opacity:.7;background:var(--surface2);">
+      <td style="font-size:12px;color:var(--text2)">${a.addr||'—'}</td>
+      <td><b>${a.roomName}</b></td>
+      <td>${a.tenant||'—'} <span class="badge b-vacant" style="font-size:9px;">已退租</span></td>
+      <td class="mono">$${(a.deposit||0).toLocaleString()}</td>
+      <td class="mono" style="color:var(--text3)">—</td>
+      <td class="mono">—</td>
+      <td><span class="badge ${bc}">${bt}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${a.checkout||'—'}<br><span style="font-size:10px;">已退租</span></td>
+      <td class="mono">$${(a.deposit||0).toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--green-dk);">$${(a.depositReturned||0).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
   tbody.innerHTML=filtered.map(r=>{
     const isVacant=!r.tenant||!r.tenant.trim();
     const s=getStatus(r.id);
@@ -1982,8 +2031,9 @@ function renderReport(){
     // 電費欄：月結顯示電費金額，儲值顯示本月已儲值總額
     const isPrepayRoom=r.elecType==='prepay';
     const elecMonthly=isPrepayRoom?0:(r.elec||0);
-    const elecPrepayTotal=isPrepayRoom?(r.elecTopups||[]).filter(t=>{
+    const elecPrepayTotal=(isPrepayRoom&&!isVacant)?(r.elecTopups||[]).filter(t=>{
       if(t.status!=='done') return false;
+      if(t.doneWhenVacant) return false;
       const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
       return d&&!isNaN(d)&&d.getFullYear()===ry&&d.getMonth()+1===rm;
     }).reduce((s,t)=>s+t.amount,0):0;
@@ -2012,7 +2062,7 @@ function renderReport(){
       <td class="mono" style="font-size:12px;">${depositCell}</td>
       <td style="font-size:12px;">${returnedCell}</td>
     </tr>`;
-  }).join('');
+  }).join('')+archivedRows;
 }
 
 // ── MANAGERS ──
@@ -2374,15 +2424,19 @@ function markElecDone(roomId, topupId){
   const t = (r.elecTopups||[]).find(x=>x.id===topupId); if(!t) return;
   t.status = 'done'; t.doneAt = new Date().toISOString();
   t.doneBy = currentUser?.username||currentUser?.name||'';
-  // 加入收款紀錄（儲值電費）
-  const hk = histMonthKey();
-  if(!payments[hk]) payments[hk]={};
-  if(!payments[hk][roomId]) payments[hk][roomId]={status:'paid',paidAt:new Date().toISOString(),method:'manual'};
-  if(!payments[hk][roomId].elecTopupLog) payments[hk][roomId].elecTopupLog=[];
-  payments[hk][roomId].elecTopupLog.push({
-    amount:t.amount, date:t.date, doneAt:t.doneAt, by:t.doneBy
-  });
-  save(); renderRooms(); renderHistory(); renderReport(); renderMgrRpt(); toast('儲電已標記為已處理，收款紀錄已更新');
+  const isVacant = !r.tenant||!r.tenant.trim();
+  t.doneWhenVacant = isVacant;
+  if(!isVacant){
+    const hk = histMonthKey();
+    if(!payments[hk]) payments[hk]={};
+    if(!payments[hk][roomId]) payments[hk][roomId]={status:'paid',paidAt:new Date().toISOString(),method:'manual'};
+    if(!payments[hk][roomId].elecTopupLog) payments[hk][roomId].elecTopupLog=[];
+    payments[hk][roomId].elecTopupLog.push({
+      amount:t.amount, date:t.date, doneAt:t.doneAt, by:t.doneBy
+    });
+  }
+  save(); renderRooms(); renderHistory(); renderReport(); renderMgrRpt();
+  toast(isVacant?'儲電已標記為已處理':'儲電已標記為已處理，收款紀錄已更新');
 }
 
 // ── 待修備忘錄 ──
@@ -2828,15 +2882,26 @@ function saveDeposit(roomId){
 
 
 // ── 歷史租客 ──
+let activeArchiveAddr='all';
+function renderArchiveAddrBar(){
+  const bar=document.getElementById('archive-addr-bar'); if(!bar) return;
+  const addrs=[...new Set((tenantArchive||[]).map(a=>a.addr||'未分類'))].sort();
+  const counts={};
+  addrs.forEach(a=>counts[a]=(tenantArchive||[]).filter(x=>(x.addr||'未分類')===a).length);
+  bar.innerHTML=`<button class="addr-pill${activeArchiveAddr==='all'?' active':''}" onclick="setArchiveAddr('all')">全部<span class="addr-badge">${(tenantArchive||[]).length}</span></button>`+
+    addrs.map(a=>`<button class="addr-pill${activeArchiveAddr===a?' active':''}" onclick="setArchiveAddr('${a}')">${a}<span class="addr-badge">${counts[a]}</span></button>`).join('');
+}
+function setArchiveAddr(a){ activeArchiveAddr=a; renderArchiveAddrBar(); renderArchive(); }
+
 function renderArchive(){
   const tbody=document.getElementById('archive-tbody'); if(!tbody) return;
   if(!isAdmin()){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:1.5rem">僅 Admin 可查看</td></tr>'; return; }
+  renderArchiveAddrBar();
   const search=(document.getElementById('archive-search')||{value:''}).value.toLowerCase();
-  const list=(tenantArchive||[]).filter(a=>
-    (a.roomName||'').toLowerCase().includes(search)||
-    (a.tenant||'').toLowerCase().includes(search)||
-    (a.addr||'').toLowerCase().includes(search)
-  ).sort((a,b)=>new Date(b.archivedAt)-new Date(a.archivedAt));
+  const list=(tenantArchive||[]).filter(a=>{
+    if(activeArchiveAddr!=='all'&&(a.addr||'未分類')!==activeArchiveAddr) return false;
+    return (a.roomName||'').toLowerCase().includes(search)||(a.tenant||'').toLowerCase().includes(search)||(a.addr||'').toLowerCase().includes(search);
+  }).sort((a,b)=>new Date(b.archivedAt)-new Date(a.archivedAt));
   if(!list.length){
     tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:1.5rem">尚無歷史租客資料</td></tr>';
     return;
@@ -2980,9 +3045,10 @@ function renderMgrRpt(){
   const rented=filtered.filter(r=>r.tenant&&r.tenant.trim());
   const paid=rented.filter(r=>getStatus(r.id)==='paid');
   const [my2,mm2]=[curYear,curMonth+1];
-  const elecPrepayMgr=filtered.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+  const elecPrepayMgr=rented.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
     const done=(r.elecTopups||[]).filter(t=>{
       if(t.status!=='done') return false;
+      if(t.doneWhenVacant) return false;
       const raw=t.doneAt||t.date||'';
       const d=raw?new Date(raw):null;
       if(!d||isNaN(d)) return false;
@@ -3015,8 +3081,9 @@ function renderMgrRpt(){
     const bt=isVacant?'空房':s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
     const isPrepayR=r.elecType==='prepay';
     // 儲值電費：本月已處理的儲值總額
-    const elecPrepayR=isPrepayR?(r.elecTopups||[]).filter(t=>{
+    const elecPrepayR=(isPrepayR&&!isVacant)?(r.elecTopups||[]).filter(t=>{
       if(t.status!=='done') return false;
+      if(t.doneWhenVacant) return false;
       const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
       return d&&!isNaN(d)&&d.getFullYear()===my2&&d.getMonth()+1===mm2;
     }).reduce((s,t)=>s+t.amount,0):0;
@@ -3123,9 +3190,10 @@ function calcIncome(){
   // 儲值電費：計算已處理的儲值金額（當月範圍）
   const mk=mgrExpKey().split('__')[0]; // YYYY-MM
   const [my,mm]=mk.split('-').map(Number);
-  const totalElecPrepay=filtered.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+  const totalElecPrepay=rented.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
     const done=(r.elecTopups||[]).filter(t=>{
       if(t.status!=='done') return false;
+      if(t.doneWhenVacant) return false;
       const raw=t.doneAt||t.date||'';
       const d=raw?new Date(raw):null;
       if(!d||isNaN(d)) return false;
