@@ -1952,10 +1952,19 @@ function renderReport(){
   const unpaid=rented.filter(r=>getStatus(r.id)==='unpaid');
 
   // 退租（有 checkout 且已到期）
-  const terminated=filtered.filter(r=>{
+  // 退租統計：現有房間（退租日已過）+ 已歸檔租客（退押金後清空的）
+  const terminatedCurrent=filtered.filter(r=>{
     if(!r.checkout||!r.tenant) return false;
     return parseLocalDate(r.checkout)<=today;
   });
+  // 歸檔租客也算進退租統計（已退押金清空的）
+  const terminatedArchived=(tenantArchive||[]).filter(a=>{
+    if(activeRptAddr!=='all'&&(a.addr||'未分類')!==activeRptAddr) return false;
+    return true; // 所有歸檔租客都算已退租
+  });
+  const terminated=[...terminatedCurrent,...terminatedArchived.map(a=>({
+    name:a.roomName, tenant:a.tenant, checkout:a.checkout, _archived:true
+  }))];
   // 押金統計：從 depositData 抓實際退還金額
   const depositFiltered=filtered.filter(r=>r.deposit>0&&r.tenant&&r.tenant.trim()); // 空房不計押金
   // 已退還（現有房間）= depositData.returned
@@ -2020,8 +2029,8 @@ function renderReport(){
     <div style="font-size:12px;color:var(--text2);">
       ${terminated.length?terminated.map(r=>`
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
-          <span>${r.name} · ${r.tenant}</span>
-          <span style="color:var(--text3)">${r.checkout}</span>
+          <span>${r.name} · ${r.tenant}${r._archived?'<span style="font-size:10px;color:var(--text3);margin-left:4px;">已退押</span>':''}</span>
+          <span style="color:var(--text3)">${r.checkout||'—'}</span>
         </div>`).join(''):'<span style="color:var(--text3)">本月無退租</span>'}
     </div>`;
 
