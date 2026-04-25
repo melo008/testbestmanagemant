@@ -1,0 +1,3104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>好管理 · 房租收款系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F7F6F2;
+  --surface: #FFFFFF;
+  --surface2: #F0EFE9;
+  --border: #E2E0D8;
+  --border2: #CCCAC0;
+  --text: #1C1B18;
+  --text2: #6A6960;
+  --text3: #A8A79E;
+  --green: #1D9E75; --green-bg: #E1F5EE; --green-dk: #0F6E56;
+  --red: #E24B4A; --red-bg: #FCEBEB; --red-dk: #A32D2D;
+  --amber: #EF9F27; --amber-bg: #FAEEDA; --amber-dk: #854F0B;
+  --blue: #378ADD; --blue-bg: #E6F1FB; --blue-dk: #185FA5;
+  --r: 10px; --rlg: 14px; --rxl: 20px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── AUTH ── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rxl);padding:2.5rem 2rem;width:100%;max-width:380px;}
+.auth-logo{text-align:center;margin-bottom:2rem;}
+.auth-logo .mark{font-size:36px;margin-bottom:8px;}
+.auth-logo h1{font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+.auth-logo p{font-size:13px;color:var(--text3);margin-top:4px;}
+.form-field{margin-bottom:14px;}
+.form-field label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:5px;}
+.form-field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s;}
+.form-field input:focus{border-color:var(--blue);}
+.auth-err{font-size:12px;color:var(--red-dk);background:var(--red-bg);border-radius:8px;padding:8px 12px;margin-bottom:12px;display:none;}
+.btn-full{width:100%;padding:11px;border-radius:var(--r);border:none;font-size:14px;font-family:inherit;font-weight:500;cursor:pointer;background:var(--text);color:#fff;transition:opacity .15s;}
+.btn-full:hover{opacity:.85;}
+.auth-footer{text-align:center;font-size:12px;color:var(--text3);margin-top:1.5rem;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:10;transform:translateX(0);transition:transform .2s;}
+.sidebar-logo{padding:1.5rem 1.25rem 1rem;border-bottom:1px solid var(--border);}
+.sidebar-logo .app-name{font-size:15px;font-weight:700;letter-spacing:-0.3px;}
+.sidebar-logo .app-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.sidebar-user{padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.user-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.user-info .name{font-size:13px;font-weight:500;}
+.user-info .role{font-size:11px;color:var(--text3);}
+nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
+.nav-sec{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;padding:0 .5rem;margin:14px 0 5px;}
+.nav-sec:first-child{margin-top:0;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:13.5px;color:var(--text2);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:all .12s;margin-bottom:2px;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--text);color:#fff;}
+.nav-item .ico{width:18px;text-align:center;font-size:14px;}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;border-radius:20px;padding:1px 7px;font-family:'DM Mono',monospace;}
+.sidebar-footer{padding:1rem 1.25rem;border-top:1px solid var(--border);}
+.btn-logout{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:none;font-size:13px;font-family:inherit;color:var(--text2);cursor:pointer;transition:all .12s;}
+.btn-logout:hover{background:var(--red-bg);color:var(--red-dk);border-color:var(--red);}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:80vw;max-width:290px;z-index:50;}
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;}
+  .sidebar-overlay.show{display:block;}
+  .main{margin-left:0;padding:.875rem;padding-bottom:76px;}
+  /* Bottom tab bar */
+  .mobile-tabbar{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:30;padding-bottom:env(safe-area-inset-bottom);}
+  .mobile-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 4px 8px;font-size:10px;color:var(--text3);cursor:pointer;border:none;background:none;font-family:inherit;gap:2px;position:relative;}
+  .mobile-tab.active{color:var(--text);}
+  .mobile-tab .tab-ico{font-size:20px;line-height:1;}
+  .mobile-tab .tab-badge{position:absolute;top:4px;right:calc(50% - 16px);background:var(--red);color:#fff;font-size:9px;border-radius:20px;padding:1px 5px;font-family:'DM Mono',monospace;}
+  /* Hamburger button — shown only on mobile */
+  .mobile-menu-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:18px;flex-shrink:0;}
+  /* Stats 2 col */
+  .stats{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem;}
+  .stat{padding:.75rem 1rem;}
+  .stat-val{font-size:20px;}
+  /* Page header stacks vertically */
+  .pg-header{flex-direction:column;gap:8px;margin-bottom:1rem;}
+  .pg-title{font-size:17px;}
+  .pg-sub{font-size:12px;}
+  .pg-header>div:last-child{width:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;}
+  /* Room grid 1 col */
+  .room-grid{grid-template-columns:1fr;}
+  /* Report 1 col */
+  .rpt-grid{grid-template-columns:1fr;gap:10px;}
+  /* Addr stat 2 col */
+  .addr-stat-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  /* Tables scroll horizontally */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:480px;font-size:12px;}
+  th{padding:8px 10px;font-size:10px;}
+  td{padding:8px 10px;}
+  /* Controls bar */
+  .ctrl{gap:6px;flex-wrap:wrap;}
+  .srch{max-width:100%!important;flex:1;min-width:0;}
+  .fsel{font-size:12px;padding:7px 8px;}
+  .btn-sm{padding:5px 9px;font-size:11.5px;}
+  /* Modal: bottom sheet */
+  .modal-ov{align-items:flex-end;padding:0;}
+  .modal{max-width:100%!important;width:100%;border-radius:18px 18px 0 0;max-height:90vh!important;overflow-y:auto!important;padding:0;}
+  .modal-hd{position:sticky;top:0;background:var(--surface);z-index:2;padding:1.25rem 1.25rem .75rem;border-bottom:1px solid var(--border);}
+  .modal>.fg,.modal>div:not(.modal-hd):not(.modal-ft){padding:1rem 1.25rem;}
+  .modal-ft{position:sticky;bottom:0;background:var(--surface);padding:.75rem 1.25rem;border-top:1px solid var(--border);}
+  .modal .fg{padding:1rem 1.25rem 0;}
+  .modal .modal-info{margin:0 1.25rem .5rem;}
+  .modal .ff.full+.modal-ft,.modal .ff+.modal-ft{margin-top:0;}
+  /* Form 1 col */
+  .fg{grid-template-columns:1fr;gap:10px;}
+  .ff.full{grid-column:1;}
+  /* Auth page */
+  .auth-wrap{padding:.75rem;align-items:flex-start;padding-top:2.5rem;}
+  .auth-card{padding:1.75rem 1.25rem;}
+  /* Month nav compact */
+  .month-disp{min-width:66px;font-size:12px;}
+  .mnth-btn{width:26px;height:26px;font-size:14px;}
+  /* Addr bar horizontal scroll, hide scrollbar */
+  .addr-bar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .addr-bar::-webkit-scrollbar{display:none;}
+  .addr-pill{white-space:nowrap;flex-shrink:0;}
+  /* Setting rows: stack label + input */
+  .setting-row{flex-direction:column;align-items:flex-start;gap:8px;}
+  .setting-row input[type=text],.setting-row input[type=password]{width:100%!important;}
+  /* GW cards stack */
+  #panel-ecpay .setting-row>div:first-child,#panel-bank .setting-row>div:first-child{flex:none;}
+  /* Role/elec option grids: 1 col on very small */
+  /* Dashboard two-col list: single col */
+  #dash-unpaid table,#dash-paid table{min-width:0;font-size:12px;}
+  /* Report bars compact */
+  .bar-lbl{min-width:44px;font-size:11px;}
+  .bar-val{min-width:58px;font-size:11px;}
+  /* Room card actions wrap */
+  .rc-acts{gap:4px;}
+  /* Expiry banner */
+  #expiry-banner{font-size:12px;padding:.6rem 1rem;}
+}
+@media(max-width:400px){
+  .stats{grid-template-columns:1fr 1fr;}
+  .stat-val{font-size:18px;}
+  .addr-stat-grid{grid-template-columns:1fr;}
+  #dash-unpaid,#dash-paid{font-size:11px;}
+}
+@media(min-width:769px){
+  .mobile-tabbar{display:none;}
+  .mobile-menu-btn{display:none;}
+  .sidebar-overlay{display:none!important;}
+  .main{margin-left:230px;padding:2rem;}
+}
+.main{flex:1;min-width:0;}
+.page{display:none;animation:fadeIn .2s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── HEADER ── */
+.pg-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.75rem;flex-wrap:wrap;gap:12px;}
+.pg-title{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+.pg-sub{font-size:13px;color:var(--text3);margin-top:3px;}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.75rem;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1rem 1.25rem;}
+.stat-lbl{font-size:11.5px;color:var(--text3);margin-bottom:5px;}
+.stat-val{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-1px;}
+.stat-val.g{color:var(--green-dk);}
+.stat-val.r{color:var(--red-dk);}
+.stat-val.a{color:var(--amber-dk);}
+.stat-hint{font-size:11px;color:var(--text3);margin-top:3px;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;transition:all .12s;}
+.btn:hover{background:var(--surface2);}
+.btn-primary{background:var(--text);color:#fff;border-color:var(--text);}
+.btn-primary:hover{opacity:.85;}
+.btn-sm{padding:5px 11px;font-size:12px;}
+.btn-success{background:var(--green-bg);color:var(--green-dk);border-color:transparent;}
+.btn-danger{background:var(--red-bg);color:var(--red-dk);border-color:transparent;}
+.btn-warn{background:var(--amber-bg);color:var(--amber-dk);border-color:transparent;}
+
+/* ── CONTROLS ── */
+.ctrl{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
+.srch{position:relative;flex:1;min-width:180px;}
+.srch input{width:100%;padding:8px 12px 8px 32px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;}
+.srch input:focus{border-color:var(--blue);}
+.srch-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none;}
+.fsel{padding:8px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer;outline:none;}
+.month-nav{display:flex;align-items:center;gap:8px;}
+.month-disp{font-size:14px;font-weight:500;min-width:88px;text-align:center;}
+.mnth-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:15px;color:var(--text2);display:flex;align-items:center;justify-content:center;}
+.mnth-btn:hover{background:var(--surface2);}
+
+/* ── ROOM GRID ── */
+.room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+.room-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1rem 1.25rem;transition:box-shadow .15s;position:relative;}
+.room-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.07);}
+.room-card::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;}
+.room-card.paid::before{background:var(--green);}
+.room-card.unpaid::before{background:var(--red);}
+.room-card.partial::before{background:var(--amber);}
+.room-card.vacant::before{background:var(--border2);}
+.rc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.rc-name{font-size:15px;font-weight:700;}
+.rc-tenant{font-size:12px;color:var(--text2);margin-top:1px;}
+.badge{display:inline-block;font-size:10.5px;padding:2px 9px;border-radius:20px;font-weight:500;}
+.b-paid{background:var(--green-bg);color:var(--green-dk);}
+.b-unpaid{background:var(--red-bg);color:var(--red-dk);}
+.b-partial{background:var(--amber-bg);color:var(--amber-dk);}
+.b-admin{background:var(--blue-bg);color:var(--blue-dk);}
+.b-owner{background:#EDE9FE;color:#4C1D95;}
+.b-coowner{background:#FEF3C7;color:#92400E;}
+.b-suspended{background:#F3F4F6;color:#6B7280;}
+.b-vacant{background:#F1EFE8;color:#5F5E5A;}
+.rc-acc{font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);background:var(--surface2);padding:4px 8px;border-radius:6px;margin:8px 0;letter-spacing:.4px;}
+.rc-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
+.rc-rent{font-family:'DM Mono',monospace;font-weight:500;color:var(--text);}
+.rc-acts{display:flex;gap:5px;flex-wrap:wrap;}
+.elec-box{background:var(--amber-bg);border-radius:8px;padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.elec-box.ok{background:var(--green-bg);}
+.elec-label{font-size:11px;color:var(--amber-dk);font-weight:500;}
+.elec-box.ok .elec-label{color:var(--green-dk);}
+.elec-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber-dk);}
+.elec-box.ok .elec-val{color:var(--green-dk);}
+.elec-acc{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);background:var(--surface2);padding:3px 7px;border-radius:5px;margin-bottom:6px;letter-spacing:.3px;}
+.topup-row{display:flex;gap:5px;align-items:center;margin-top:4px;}
+.topup-input{flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;min-width:0;}
+.section-divider{height:1px;background:var(--border);margin:8px 0;}
+
+/* ── 儲電通知 ── */
+.elec-topup-box{background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:7px 10px;margin-bottom:6px;}
+.elec-topup-title{font-size:11px;font-weight:600;color:#92400E;margin-bottom:4px;}
+.elec-topup-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.elec-topup-amt{font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:#92400E;}
+.elec-topup-time{font-size:10px;color:#B45309;}
+
+/* ── 待修備忘錄 ── */
+.repair-box{background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:7px 10px;margin-bottom:6px;}
+.repair-box.ok{background:var(--green-bg);border-color:var(--green);}
+.repair-title{font-size:11px;font-weight:600;color:var(--red-dk);margin-bottom:5px;}
+.repair-box.ok .repair-title{color:var(--green-dk);}
+.repair-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--red);color:#fff;border-radius:20px;padding:2px 8px;margin:2px 2px 2px 0;}
+.repair-tag.overdue{background:#7F1D1D;}
+.repair-days{font-size:9px;opacity:.8;}
+.repair-done-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--green);color:#fff;cursor:pointer;font-family:inherit;margin-top:6px;display:block;width:100%;}
+
+/* ── 改帳記錄 ── */
+.adj-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;color:var(--amber-dk);position:relative;line-height:1;flex-shrink:0;}
+.adj-tooltip{position:absolute;bottom:calc(100% + 6px);right:0;background:var(--text);color:#fff;border-radius:8px;padding:8px 12px;font-size:11.5px;line-height:1.6;min-width:200px;z-index:200;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+.adj-tooltip::after{content:'';position:absolute;top:100%;right:10px;border:5px solid transparent;border-top-color:var(--text);}
+.adj-tooltip-row{display:flex;justify-content:space-between;gap:12px;}
+.adj-tooltip-label{color:rgba(255,255,255,.6);}
+
+.mgrrpt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
+.mgrrpt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1rem 1.25rem;}
+.mgrrpt-card-label{font-size:11.5px;color:var(--text3);margin-bottom:5px;}
+.mgrrpt-card-val{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);}
+.mgrrpt-card-val.green{color:var(--green-dk);}
+.mgrrpt-card-val.red{color:var(--red-dk);}
+.mgrrpt-card-val.amber{color:var(--amber-dk);}
+.expense-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.25rem;margin-bottom:1.5rem;}
+.expense-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.expense-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:12px;}
+.expense-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);transition:all .12s;}
+.expense-item.active{background:var(--blue-bg);border-color:var(--blue);}
+.expense-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--blue);flex-shrink:0;}
+.expense-item-label{flex:1;font-size:13px;}
+.expense-item-input{width:90px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);outline:none;text-align:right;}
+.expense-custom-row{display:flex;gap:8px;align-items:center;margin-top:6px;}
+.expense-custom-input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;}
+.income-result{background:var(--surface);border:2px solid var(--green);border-radius:var(--rlg);padding:1.25rem;margin-bottom:1.5rem;}
+.income-result-title{font-size:12px;font-weight:600;color:var(--green-dk);margin-bottom:12px;}
+.income-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.income-row:last-child{border-bottom:none;padding-top:10px;margin-top:4px;}
+.income-row-label{color:var(--text2);}
+.income-row-val{font-family:'DM Mono',monospace;font-weight:500;}
+.income-total{font-size:20px;font-weight:700;color:var(--green-dk);}
+.room-list-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;}
+@media(max-width:768px){
+  .mgrrpt-summary{grid-template-columns:1fr 1fr;}
+  .mgrrpt-card-val{font-size:18px;}
+}
+.handover-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.1rem 1.25rem;margin-bottom:12px;}
+.handover-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.handover-room-name{font-size:15px;font-weight:700;}
+.handover-room-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.handover-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.handover-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.handover-section-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;}
+.handover-textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;resize:vertical;min-height:70px;}
+.handover-textarea:focus{border-color:var(--blue);}
+.handover-field-row{display:flex;gap:8px;align-items:center;margin-top:8px;}
+.handover-field-label{font-size:12px;color:var(--text2);min-width:60px;flex-shrink:0;}
+.handover-field-input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;}
+.handover-done-box{background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--green-dk);margin-top:6px;}
+.deposit-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.deposit-opt{border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;}
+.deposit-opt.active{border:2px solid var(--text);background:var(--surface2);}
+.deposit-opt-title{font-size:13px;font-weight:600;}
+.deposit-opt-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+
+/* ── 待修逾期紅字橫幅 ── */
+.overdue-banner{display:none;position:fixed;top:0;left:230px;right:0;z-index:51;background:#FEE2E2;border-bottom:2px solid var(--red);padding:9px 20px;font-size:13px;color:var(--red-dk);}
+.overdue-banner.show{display:block;}
+@media(max-width:768px){
+  .overdue-banner{left:0;}
+}
+
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead{background:var(--surface2);}
+th{padding:9px 14px;text-align:left;font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+.mono{font-family:'DM Mono',monospace;font-size:12px;}
+
+/* ── MODAL ── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem;}
+.modal{background:var(--surface);border-radius:var(--rlg);padding:1.75rem;width:100%;max-width:420px;border:1px solid var(--border);max-height:90vh;overflow-y:auto;}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);line-height:1;padding:0 4px;}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ff{display:flex;flex-direction:column;gap:5px;}
+.ff.full{grid-column:1/-1;}
+.ff label{font-size:11.5px;color:var(--text2);font-weight:500;}
+.ff input,.ff select,.ff textarea{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;}
+.ff input:focus,.ff select:focus{border-color:var(--blue);}
+.ff textarea{resize:vertical;min-height:60px;}
+.modal-ft{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
+.modal-info{font-size:12px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:12px;line-height:1.6;}
+
+/* ── REPORT ── */
+.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;}
+.rpt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.25rem;}
+.rpt-card h3{font-size:12px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.bar-lbl{font-size:12px;color:var(--text2);min-width:54px;}
+.bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s;}
+.bar-val{font-size:12px;font-family:'DM Mono',monospace;min-width:72px;text-align:right;}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:14px;}
+.empty .eico{font-size:32px;margin-bottom:10px;}
+/* ── ADDRESS ── */
+.addr-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;align-items:center;}
+.addr-pill{padding:5px 14px;border-radius:20px;font-size:12.5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;font-family:inherit;}
+.addr-pill:hover{background:var(--surface2);}
+.addr-pill.active{background:var(--text);color:#fff;border-color:var(--text);}
+.addr-badge{display:inline-block;font-size:10px;background:var(--surface2);color:var(--text3);border-radius:20px;padding:1px 6px;margin-left:4px;}
+.addr-pill.active .addr-badge{background:rgba(255,255,255,.2);color:#fff;}
+/* ── 地址管理 ── */
+.addr-mgr-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.addr-mgr-row:last-child{border-bottom:none;}
+.addr-mgr-name{font-size:13.5px;font-weight:500;}
+.addr-mgr-subs{font-size:11.5px;color:var(--text3);margin-top:2px;}
+.mgr-check-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.addr-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;margin-bottom:1.5rem;}
+.addr-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:.9rem 1.1rem;}
+.addr-stat-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.addr-stat-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:2px;}
+.addr-stat-bar{height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
+.addr-stat-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s;}
+
+/* ── WEBHOOK STATUS ── */
+.wh-status{display:flex;align-items:center;gap:6px;font-size:12px;}
+.wh-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.wh-dot.inactive{background:var(--text3);animation:none;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;}
+.toast.show{opacity:1;transform:none;}
+
+/* ── SETTINGS ── */
+.setting-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;margin-bottom:16px;}
+.setting-section-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.setting-row{padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:13px;}
+.setting-row:last-child{border-bottom:none;}
+.setting-row-lbl{color:var(--text2);font-size:12px;margin-top:2px;}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="auth-screen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="mark">🏢</div>
+      <h1>好管理</h1>
+      <p>房租收款管理系統</p>
+    </div>
+    <div class="auth-err" id="auth-err">帳號或密碼錯誤，請再試一次</div>
+    <div class="form-field">
+      <label>帳號</label>
+      <input type="text" id="login-user" placeholder="輸入帳號" autocomplete="username">
+    </div>
+    <div class="form-field">
+      <label>密碼</label>
+      <input type="password" id="login-pass" placeholder="輸入密碼" autocomplete="current-password">
+    </div>
+    <button class="btn-full" onclick="doLogin()">登入</button>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app-screen" class="layout" style="display:none;">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="app-name">🏢 好管理</div>
+      <div class="app-sub">房租收款管理系統</div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="nav-avatar" style="background:#E6F1FB;color:#185FA5;">A</div>
+      <div class="user-info">
+        <div class="name" id="nav-name">管理員</div>
+        <div class="role" id="nav-role">房東</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-sec">主要功能</div>
+      <button class="nav-item active" onclick="goPage('dashboard')"><span class="ico">▦</span>總覽儀表板</button>
+      <button class="nav-item" onclick="goPage('rooms')"><span class="ico">🏠</span>房間管理<span class="nav-badge" id="unpaid-badge" style="display:none">0</span></button>
+      <button class="nav-item" onclick="goPage('tenants')"><span class="ico">👤</span>租客資料</button>
+      <button class="nav-item" onclick="goPage('history')"><span class="ico">📋</span>收款紀錄</button>
+      <button class="nav-item" onclick="goPage('handover')"><span class="ico">🔑</span>點交管理<span class="nav-badge" id="handover-badge" style="display:none;background:var(--amber);">0</span></button>
+      <div class="nav-sec">報表與設定</div>
+      <button class="nav-item" onclick="goPage('report')"><span class="ico">📊</span>月份報表</button>
+      <button class="nav-item" onclick="goPage('mgrrpt')"><span class="ico">📈</span>管理人報表</button>
+      <button class="nav-item" id="nav-managers" onclick="goPage('managers')"><span class="ico">👥</span>管理人帳號</button>
+      <button class="nav-item" id="nav-addr-mgr" onclick="goPage('addrmgr')"><span class="ico">📍</span>地址管理</button>
+      <button class="nav-item" id="nav-archive" onclick="goPage('archive')"><span class="ico">🗂</span>歷史租客</button>
+      <button class="nav-item" onclick="goPage('settings')"><span class="ico">⚙️</span>系統設定</button>
+      <button class="nav-item" onclick="openExportModal()"><span class="ico">⬇</span>匯出 CSV</button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="doLogout()">登出</button>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Mobile bottom tab bar -->
+  <nav class="mobile-tabbar">
+    <button class="mobile-tab active" id="tab-dashboard" onclick="goPage('dashboard')">
+      <span class="tab-ico">▦</span><span>總覽</span>
+    </button>
+    <button class="mobile-tab" id="tab-rooms" onclick="goPage('rooms')">
+      <span class="tab-ico">🏠</span><span>房間</span>
+      <span class="tab-badge" id="tab-unpaid-badge" style="display:none"></span>
+    </button>
+    <button class="mobile-tab" id="tab-tenants" onclick="goPage('tenants')">
+      <span class="tab-ico">👤</span><span>租客</span>
+    </button>
+    <button class="mobile-tab" id="tab-history" onclick="goPage('history')">
+      <span class="tab-ico">📋</span><span>收款</span>
+    </button>
+    <button class="mobile-tab" id="tab-more" onclick="toggleSidebar()">
+      <span class="tab-ico">☰</span><span>更多</span>
+    </button>
+  </nav>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">總覽儀表板</div><div class="pg-sub" id="dash-sub"></div></div></div>
+        <div class="month-nav">
+          <button class="mnth-btn" onclick="prevMonth()">‹</button>
+          <span class="month-disp" id="dash-month"></span>
+          <button class="mnth-btn" onclick="nextMonth()">›</button>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">總房間數</div><div class="stat-val" id="s-total">0</div><div class="stat-hint">間</div></div>
+        <div class="stat"><div class="stat-lbl">已付款</div><div class="stat-val g" id="s-paid">0</div><div class="stat-hint" id="s-paid-h"></div></div>
+        <div class="stat"><div class="stat-lbl">未付款</div><div class="stat-val r" id="s-unpaid">0</div><div class="stat-hint" id="s-unpaid-h"></div></div>
+        <div class="stat"><div class="stat-lbl">本月收入</div><div class="stat-val a" id="s-income">$0</div><div class="stat-hint" id="s-income-h"></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--red-dk);margin-bottom:8px;">⚠ 待收款</div>
+          <div id="dash-unpaid" class="tbl-wrap"></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--green-dk);margin-bottom:8px;">✓ 已收款</div>
+          <div id="dash-paid" class="tbl-wrap"></div>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem;">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;">📍 各地址收款狀況</div>
+        <div class="addr-stat-grid" id="dash-addr-stats"></div>
+      </div>
+    </div>
+
+    <!-- ROOMS -->
+    <div class="page" id="page-rooms">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">房間管理</div><div class="pg-sub">新增、編輯、收款狀態</div></div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="month-nav">
+            <button class="mnth-btn" onclick="prevMonth()">‹</button>
+            <span class="month-disp" id="room-month"></span>
+            <button class="mnth-btn" onclick="nextMonth()">›</button>
+          </div>
+          <button class="btn btn-primary" onclick="openRoomModal()">+ 新增房間</button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="srch" style="max-width:260px;"><span class="srch-ico">🔍</span><input type="text" id="room-search" placeholder="搜尋房間、租客、地址…" oninput="renderRooms()"></div>
+        <select class="fsel" id="room-filter" onchange="renderRooms()">
+          <option value="all">全部狀態</option>
+          <option value="vacant">空房</option>
+          <option value="unpaid">未付款</option>
+          <option value="partial">部分付款</option>
+          <option value="paid">已付款</option>
+        </select>
+        <button class="btn btn-sm btn-success" onclick="markAllPaid()">✓ 全標已付</button>
+        <button class="btn btn-sm" onclick="resetMonth()">↺ 重置本月</button>
+      </div>
+      <div class="addr-bar" id="room-addr-bar"></div>
+      <div class="room-grid" id="room-grid"></div>
+    </div>
+
+    <!-- TENANTS -->
+    <div class="page" id="page-tenants">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">租客資料</div><div class="pg-sub">所有租客的詳細資訊</div></div></div>
+        <button class="btn btn-primary" onclick="openRoomModal()">+ 新增房間</button>
+      </div>
+      <div class="ctrl">
+        <div class="srch" style="max-width:260px;"><span class="srch-ico">🔍</span><input type="text" id="tenant-search" placeholder="搜尋姓名、電話、地址…" oninput="renderTenants()"></div>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>房間</th><th>姓名</th><th>電話</th><th>緊急聯絡</th><th>地址</th><th>入住日</th><th>退租日</th><th>押金</th><th>月租</th><th>備註</th><th>操作</th></tr></thead>
+        <tbody id="tenant-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="page" id="page-history">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">收款紀錄</div><div class="pg-sub">各月份付款記錄</div></div></div>
+        <div class="month-nav">
+          <button class="mnth-btn" onclick="histPrevMonth()">‹</button>
+          <span class="month-disp" id="hist-month-disp"></span>
+          <button class="mnth-btn" onclick="histNextMonth()">›</button>
+        </div>
+      </div>
+      <div class="addr-bar" id="hist-addr-bar" style="margin-bottom:1rem;"></div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>房間</th><th>租客</th><th>地址</th><th>虛擬帳號</th><th>應收金額</th><th>狀態</th><th>付款時間</th><th>操作</th></tr></thead>
+        <tbody id="hist-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- REPORT -->
+    <div class="page" id="page-report">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">月份報表</div><div class="pg-sub">收款統計分析</div></div></div>
+        <div class="month-nav">
+          <button class="mnth-btn" onclick="prevMonth()">‹</button>
+          <span class="month-disp" id="rpt-month"></span>
+          <button class="mnth-btn" onclick="nextMonth()">›</button>
+        </div>
+      </div>
+      <div class="addr-bar" id="rpt-addr-bar"></div>
+      <div class="rpt-grid">
+        <div class="rpt-card"><h3>收款率</h3><div id="rpt-bars"></div></div>
+        <div class="rpt-card"><h3>金額統計</h3><div id="rpt-money"></div></div>
+      </div>
+      <div class="rpt-grid" style="margin-top:0;">
+        <div class="rpt-card"><h3>退租統計</h3><div id="rpt-terminated"></div></div>
+        <div class="rpt-card"><h3>押金退還</h3><div id="rpt-deposit"></div></div>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>地址</th><th>房間</th><th>租客</th><th>月租金</th><th>電費</th><th>應收</th><th>狀態</th><th>退租日</th><th>押金</th><th>退還押金</th></tr></thead>
+        <tbody id="rpt-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- MANAGERS -->
+    <div class="page" id="page-managers">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">管理人帳號</div><div class="pg-sub">新增或移除有權限登入的管理人</div></div></div>
+        <button class="btn btn-primary" onclick="openManagerModal()">+ 新增帳號</button>
+      </div>
+      <div class="modal-info" id="mgr-info-admin">
+        🔒 <b>Admin（最高權限）</b>：不可刪除，擁有全部功能。<br>
+        ⭐ <b>副管理員</b>：與 Admin 相同權限，可被刪除。<br>
+        👥 <b>管理人</b>：只看到自己負責地址的房間，無法管理帳號。
+      </div>
+      <div class="modal-info" id="mgr-info-self" style="display:none;">
+        👤 你目前登入的帳號資訊。若需修改密碼，請點右側「改密碼」。
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>姓名</th><th>帳號</th><th>角色</th><th>建立時間</th><th>操作</th></tr></thead>
+        <tbody id="mgr-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- HANDOVER -->
+    <div class="page" id="page-handover">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+          <div><div class="pg-title">點交管理</div><div class="pg-sub">租約到期房間的點交與押金退還</div></div>
+        </div>
+      </div>
+      <div class="modal-info" id="handover-empty" style="display:none;">目前沒有租約到期或即將到期的房間。</div>
+      <div id="handover-list"></div>
+    </div>
+
+    <!-- MGR REPORT -->
+    <div class="page" id="page-mgrrpt">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+          <div><div class="pg-title">管理人報表</div><div class="pg-sub">選擇地址查看出租狀況與支出明細</div></div>
+        </div>
+        <div class="month-nav">
+          <button class="mnth-btn" onclick="prevMonth()">‹</button>
+          <span class="month-disp" id="mgrrpt-month"></span>
+          <button class="mnth-btn" onclick="nextMonth()">›</button>
+        </div>
+      </div>
+
+      <!-- 地址選擇 -->
+      <div style="margin-bottom:1.25rem;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:500;">選擇地址</div>
+        <div class="addr-bar" id="mgrrpt-addr-bar"></div>
+      </div>
+
+      <!-- 摘要卡片 -->
+      <div class="mgrrpt-summary" id="mgrrpt-summary"></div>
+
+      <!-- 支出欄 -->
+      <div class="expense-section">
+        <div class="expense-title">💸 支出項目（勾選並填入金額）</div>
+        <div class="expense-grid" id="expense-grid"></div>
+        <!-- 自訂支出 -->
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:500;">自訂支出項目</div>
+        <div id="custom-expenses"></div>
+        <button class="btn btn-sm" onclick="addCustomExpense()" style="margin-top:6px;">+ 新增自訂項目</button>
+      </div>
+
+      <!-- 收入結果 -->
+      <div class="income-result">
+        <div class="income-result-title">📊 本月收支計算</div>
+        <div id="income-result-rows"></div>
+      </div>
+
+      <!-- 房間列表 -->
+      <div class="room-list-section">
+        <table>
+          <thead><tr><th>房間</th><th>租客</th><th>月租金</th><th>電費</th><th>應收</th><th>狀態</th></tr></thead>
+          <tbody id="mgrrpt-room-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADDR MGR -->
+    <div class="page" id="page-addrmgr">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+          <div><div class="pg-title">地址管理</div><div class="pg-sub">設定各地址負責的管理人</div></div>
+        </div>
+        <button class="btn btn-primary" onclick="promptNewAddr()">+ 新增地址</button>
+      </div>
+      <div class="modal-info">
+        📍 每個地址可以指派多位管理人，管理人登入後只會看到自己負責地址的房間，並擁有完整管理權限。<br>
+        Admin 和副管理員永遠看到全部房間。
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>地址名稱</th><th>房間數</th><th>電費類型</th><th>負責管理人</th><th>操作</th></tr></thead>
+          <tbody id="addr-mgr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ARCHIVE -->
+    <div class="page" id="page-archive">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+          <div><div class="pg-title">歷史租客</div><div class="pg-sub">已退租的房間與租客資料（僅 Admin 可見）</div></div>
+        </div>
+        <div class="srch" style="max-width:260px;"><span class="srch-ico">🔍</span><input type="text" id="archive-search" placeholder="搜尋房間或姓名…" oninput="renderArchive()"></div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>房間</th><th>地址</th><th>租客姓名</th><th>入住日</th><th>退租日</th><th>押金</th><th>歸檔時間</th><th>操作</th></tr></thead>
+          <tbody id="archive-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 歷史租客詳情 Modal -->
+    <div class="modal-ov" id="archive-detail-modal" style="display:none;">
+      <div class="modal" style="max-width:480px;">
+        <div class="modal-hd"><span class="modal-title" id="archive-detail-title">租客詳情</span><button class="modal-close" onclick="closeModal('archive-detail-modal')">×</button></div>
+        <div id="archive-detail-content" style="padding:1rem 1.25rem;"></div>
+        <div class="modal-ft">
+          <button class="btn btn-primary" onclick="closeModal('archive-detail-modal')">關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">系統設定</div><div class="pg-sub">金流串接與帳號設定</div></div></div>
+      </div>
+
+      <!-- 金流模式選擇 -->
+      <div class="setting-section">
+        <div class="setting-section-hd">💳 收款方式</div>
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:12px;padding-bottom:1.25rem;">
+          <div style="font-size:13px;color:var(--text2);">選擇你的虛擬帳號來源，設定後 Webhook 會自動標記已付款。</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;">
+            <div id="mode-ecpay" class="gw-card active" onclick="switchGw('ecpay')" style="border:2px solid var(--text);border-radius:12px;padding:1rem 1.25rem;cursor:pointer;transition:all .15s;">
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">綠界 ECPay</div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">個人即可申請，審核快速。每筆約 $10–15 手續費。適合快速起步。</div>
+              <div style="margin-top:8px;"><span class="badge b-paid">目前使用</span></div>
+            </div>
+            <div id="mode-bank" class="gw-card" onclick="switchGw('bank')" style="border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;cursor:pointer;transition:all .15s;">
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">銀行直連</div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">直接串接銀行 API，無手續費。需企業帳戶，各銀行規格不同。</div>
+              <div style="margin-top:8px;"><span class="badge" style="background:var(--amber-bg);color:var(--amber-dk);">開發中</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 綠界設定 -->
+      <div class="setting-section" id="panel-ecpay">
+        <div class="setting-section-hd">🟢 綠界 ECPay 設定</div>
+        <div class="setting-row">
+          <div><div>MerchantID（特店代號）</div><div class="setting-row-lbl">向綠界申請後取得</div></div>
+          <input id="cfg-mid" type="text" placeholder="例：2000132" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+        </div>
+        <div class="setting-row">
+          <div><div>HashKey</div><div class="setting-row-lbl">API 金鑰，請妥善保管</div></div>
+          <input id="cfg-hk" type="password" placeholder="••••••••••••" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+        </div>
+        <div class="setting-row">
+          <div><div>HashIV</div><div class="setting-row-lbl">API 金鑰（IV）</div></div>
+          <input id="cfg-hiv" type="password" placeholder="••••••••••••" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+        </div>
+        <div class="setting-row">
+          <div><div>Webhook 狀態</div><div class="setting-row-lbl">綠界付款通知接收狀態</div></div>
+          <div class="wh-status"><div class="wh-dot inactive" id="wh-dot"></div><span id="wh-txt">尚未設定</span></div>
+        </div>
+        <div class="setting-row">
+          <div style="flex:1;">
+            <div>Webhook 網址（填入綠界後台「付款完成通知網址」）</div>
+            <div class="setting-row-lbl" id="wh-url" style="font-family:'DM Mono',monospace;font-size:11px;margin-top:4px;color:var(--blue-dk);">https://your-app.vercel.app/api/webhook</div>
+          </div>
+          <button class="btn btn-sm" onclick="copyWebhook()">複製</button>
+        </div>
+        <div class="setting-row" style="justify-content:flex-end;gap:8px;">
+          <button class="btn btn-sm" onclick="saveCfg()">儲存設定</button>
+          <button class="btn btn-sm btn-success" onclick="testWebhook()">測試 Webhook</button>
+        </div>
+      </div>
+
+      <!-- 銀行直連設定 -->
+      <div class="setting-section" id="panel-bank" style="display:none;">
+        <div class="setting-section-hd">🏦 銀行直連設定</div>
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:10px;padding-bottom:1.25rem;">
+          <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+            銀行直連需要向各銀行申請企業 API 服務，規格依銀行不同。目前支援以下銀行，請選擇你的往來銀行：
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;">
+            <div class="bank-option" onclick="selectBank(this,'esun')" style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:center;transition:all .15s;">
+              <div style="font-size:14px;font-weight:600;">玉山銀行</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">809</div>
+            </div>
+            <div class="bank-option" onclick="selectBank(this,'ctbc')" style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:center;transition:all .15s;">
+              <div style="font-size:14px;font-weight:600;">中國信託</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">822</div>
+            </div>
+            <div class="bank-option" onclick="selectBank(this,'taishin')" style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:center;transition:all .15s;">
+              <div style="font-size:14px;font-weight:600;">台新銀行</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">812</div>
+            </div>
+            <div class="bank-option" onclick="selectBank(this,'cathay')" style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:center;transition:all .15s;">
+              <div style="font-size:14px;font-weight:600;">國泰世華</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">013</div>
+            </div>
+            <div class="bank-option" onclick="selectBank(this,'firstbank')" style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:center;transition:all .15s;">
+              <div style="font-size:14px;font-weight:600;">第一銀行</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">007</div>
+            </div>
+            <div class="bank-option" onclick="selectBank(this,'other')" style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;cursor:pointer;text-align:center;transition:all .15s;">
+              <div style="font-size:14px;font-weight:600;">其他銀行</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">自訂</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 銀行 API 欄位（選銀行後顯示） -->
+        <div id="bank-fields" style="display:none;">
+          <div class="setting-row">
+            <div><div>銀行代碼</div><div class="setting-row-lbl">三碼銀行代碼</div></div>
+            <input id="bank-code" type="text" placeholder="例：809" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+          </div>
+          <div class="setting-row">
+            <div><div>API 端點（由銀行提供）</div><div class="setting-row-lbl">企業網銀申請後取得</div></div>
+            <input id="bank-endpoint" type="text" placeholder="https://api.bank.com/..." style="width:280px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+          </div>
+          <div class="setting-row">
+            <div><div>API Key / Client ID</div><div class="setting-row-lbl">銀行核發的識別碼</div></div>
+            <input id="bank-apikey" type="password" placeholder="••••••••••••" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+          </div>
+          <div class="setting-row">
+            <div><div>API Secret</div><div class="setting-row-lbl">銀行核發的密鑰</div></div>
+            <input id="bank-secret" type="password" placeholder="••••••••••••" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+          </div>
+          <div class="setting-row">
+            <div><div>主帳號（收款歸戶帳號）</div><div class="setting-row-lbl">所有虛擬帳號收款歸入此帳號</div></div>
+            <input id="bank-main-acc" type="text" placeholder="例：0123456789" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+          </div>
+          <div class="setting-row">
+            <div>
+              <div>Webhook 通知網址</div>
+              <div class="setting-row-lbl" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue-dk);">https://your-app.vercel.app/api/bank-webhook</div>
+            </div>
+            <button class="btn btn-sm" onclick="copyBankWebhook()">複製</button>
+          </div>
+          <div class="setting-row" style="justify-content:flex-end;gap:8px;">
+            <button class="btn btn-sm" onclick="saveBankCfg()">儲存設定</button>
+            <button class="btn btn-sm btn-success" onclick="testBankWebhook()">測試連線</button>
+          </div>
+        </div>
+
+        <div id="bank-note" style="padding:1rem 1.25rem;font-size:12.5px;color:var(--amber-dk);background:var(--amber-bg);border-top:1px solid var(--border);">
+          ⚠ 銀行直連需要企業帳戶，申請流程較長（約 1–2 週）。如尚未申請，建議先用綠界快速上線，之後再切換。
+        </div>
+      </div>
+
+      <!-- 修改密碼 -->
+      <div class="setting-section">
+        <div class="setting-section-hd">🔐 修改密碼</div>
+        <div class="setting-row">
+          <div>目前密碼</div>
+          <input id="pw-old" type="password" placeholder="輸入目前密碼" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+        </div>
+        <div class="setting-row">
+          <div>新密碼</div>
+          <input id="pw-new" type="password" placeholder="輸入新密碼" style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+        </div>
+        <div class="setting-row" style="justify-content:flex-end;">
+          <button class="btn btn-sm btn-primary" onclick="changePw()">更新密碼</button>
+        </div>
+      </div>
+
+      <!-- 部署說明 -->
+      <div class="setting-section">
+        <div class="setting-section-hd">📱 部署說明</div>
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px;padding-bottom:1.25rem;">
+          <div style="font-size:13px;line-height:1.8;color:var(--text2);">
+            <b style="color:var(--text);">① 申請綠界</b>：前往 ecpay.com.tw 申請個人賣家帳號，開通「ATM 虛擬帳號」服務，取得 MerchantID / HashKey / HashIV。<br>
+            <b style="color:var(--text);">② 建立 Supabase</b>：前往 supabase.com 建立免費專案，執行下方 SQL 建立資料表。<br>
+            <b style="color:var(--text);">③ 部署 Vercel</b>：將程式碼上傳 GitHub，連接 Vercel 一鍵部署，填入環境變數即可。<br>
+            <b style="color:var(--text);">④ 填入 Webhook</b>：將 Vercel 網址填入綠界後台的「付款完成通知網址」欄位。
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="showDeploySQL()">顯示 Supabase SQL</button>
+          <pre id="deploy-sql" style="display:none;background:var(--surface2);border-radius:8px;padding:1rem;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);line-height:1.7;width:100%;overflow-x:auto;white-space:pre-wrap;"></pre>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ROOM MODAL -->
+<div class="modal-ov" id="room-modal" style="display:none;">
+  <div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto;">
+    <div class="modal-hd"><span class="modal-title" id="room-modal-title">新增房間</span><button class="modal-close" onclick="closeModal('room-modal')">×</button></div>
+    <div class="fg">
+      <div class="ff full"><label>所屬地址</label>
+        <div style="display:flex;gap:6px;">
+          <select id="f-addr" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;" onchange="onAddrChange()"></select>
+          <button type="button" class="btn btn-sm" onclick="promptNewAddr()" style="white-space:nowrap;">+ 新地址</button>
+        </div>
+      </div>
+      <div class="ff"><label>房間名稱 *</label><input type="text" id="f-name" placeholder="例：301室"></div>
+      <div class="ff"><label>月租金（元）*</label><input type="number" id="f-rent" placeholder="8000" oninput="updateExpected();autoFillDeposit()"></div>
+      <div class="ff"><label>租客姓名</label><input type="text" id="f-tenant" placeholder="陳小明"></div>
+      <div class="ff"><label>租客電話</label><input type="text" id="f-phone" placeholder="0912-345-678"></div>
+      <div class="ff"><label>緊急聯絡電話</label><input type="text" id="f-emergency" placeholder="0912-000-000"></div>
+      <div class="ff"><label>入住日期</label><input type="date" id="f-checkin"></div>
+      <div class="ff"><label>退租日期</label><input type="date" id="f-checkout"></div>
+      <div class="ff"><label>押金（元）</label><input type="number" id="f-deposit" placeholder="16000"></div>
+      <div class="ff full"><label>電費類型</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px;">
+          <div id="elec-opt-monthly" onclick="setElecType('monthly')" style="border:2px solid var(--text);border-radius:8px;padding:7px 10px;cursor:pointer;transition:all .15s;">
+            <div style="font-size:13px;font-weight:600;">月結電費</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:1px;">每月和租金一起收</div>
+          </div>
+          <div id="elec-opt-prepay" onclick="setElecType('prepay')" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;transition:all .15s;">
+            <div style="font-size:13px;font-weight:600;">儲值電費</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:1px;">預儲，隨時可匯</div>
+          </div>
+        </div>
+      </div>
+      <div class="ff" id="elec-field-monthly"><label>本月電費（元）</label><input type="number" id="f-elec" placeholder="0" oninput="updateExpected()"></div>
+      <div class="ff full" id="elec-field-prepay" style="display:none;"><label>電費虛擬帳號（第二組，專收電費）</label><input type="text" id="f-elec-acc" placeholder="例：809001xxxxxxxxx"></div>
+      <div class="ff" id="elec-field-price" style="display:none;"><label>每度電費單價（元）</label><input type="number" id="f-elec-price" placeholder="例：4.5" step="0.1" oninput="updateExpected()"></div>
+      <input type="hidden" id="f-elec-balance" value="0">
+      <div class="ff full" style="background:var(--surface2);border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:var(--text2);">本月應收（租金部分）</span>
+        <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;" id="f-expected">$0</span>
+      </div>
+      <div class="ff full"><label>虛擬帳號（向綠界申請後填入）</label><input type="text" id="f-acc" placeholder="例：809001xxxxxxxxx"></div>
+      <div class="ff full"><label>備註</label><textarea id="f-note" placeholder="其他備註…" style="min-height:50px;"></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('room-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveRoom()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGER MODAL -->
+<div class="modal-ov" id="mgr-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-title">新增帳號</span><button class="modal-close" onclick="closeModal('mgr-modal')">×</button></div>
+    <div class="fg">
+      <div class="ff"><label>姓名 *</label><input type="text" id="mg-name" placeholder="例：王小明"></div>
+      <div class="ff"><label>帳號 *</label><input type="text" id="mg-user" placeholder="例：wangxm"></div>
+      <div class="ff full"><label>密碼 *</label><input type="password" id="mg-pass" placeholder="至少 6 個字元"></div>
+      <div class="ff full"><label>角色</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px;">
+          <div id="role-opt-coowner" onclick="setMgrRole('coowner')" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;">
+            <div style="font-size:13px;font-weight:600;">⭐ 副管理員</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">與 Admin 相同權限，可被刪除</div>
+          </div>
+          <div id="role-opt-manager" onclick="setMgrRole('manager')" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;">
+            <div style="font-size:13px;font-weight:600;">👥 管理人</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">查看、標記付款，有限權限</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('mgr-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveManager()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- 地址管理人指派 Modal -->
+<div class="modal-ov" id="addr-mgr-modal" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-hd"><span class="modal-title" id="addr-mgr-modal-title">指派管理人</span><button class="modal-close" onclick="closeModal('addr-mgr-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">勾選負責此地址的管理人（可多選）</div>
+      <div id="addr-mgr-checklist" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">電費類型（此地址新增房間時自動帶入）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div id="addr-elec-monthly" onclick="setAddrElec('monthly')" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;">
+            <div style="font-size:13px;font-weight:600;">月結電費</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">每月和租金一起收</div>
+          </div>
+          <div id="addr-elec-prepay" onclick="setAddrElec('prepay')" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;">
+            <div style="font-size:13px;font-weight:600;">儲值電費</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">預儲，隨時可匯</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">地址名稱</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="addr-edit-name" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+          <button class="btn btn-sm btn-danger" onclick="deleteAddr()">刪除地址</button>
+        </div>
+        <div id="addr-prepay-fields" style="margin-top:10px;display:none;">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">儲值電費帳號（選填）</div>
+          <input type="text" id="addr-elec-acc" placeholder="例：8090010099901" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px;">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">每度電費單價（元）</div>
+          <input type="number" id="addr-elec-price" placeholder="例：4.5" step="0.1" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('addr-mgr-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveAddrMgr()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改密碼 Modal -->
+<div class="modal-ov" id="changepw-modal" style="display:none;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-hd"><span class="modal-title">修改密碼</span><button class="modal-close" onclick="closeModal('changepw-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <input type="hidden" id="cpw-uid">
+      <div class="ff" style="margin-bottom:10px;" id="cpw-old-row"><label>目前密碼</label><input type="password" id="cpw-old" placeholder="輸入目前密碼"></div>
+      <div class="ff"><label>新密碼（至少6字元）</label><input type="password" id="cpw-new" placeholder="輸入新密碼"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('changepw-modal')">取消</button>
+      <button class="btn btn-primary" onclick="doChangePw()">確認修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- 匯出 CSV Modal -->
+<div class="modal-ov" id="export-modal" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-hd"><span class="modal-title">匯出 CSV</span><button class="modal-close" onclick="closeModal('export-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:12px;">
+      <div class="ff"><label>地址篩選</label>
+        <select id="exp-addr" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;"></select>
+      </div>
+      <div style="font-size:12px;color:var(--text2);font-weight:500;">選擇匯出內容（可多選）</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="exp-payment" checked style="width:15px;height:15px;accent-color:var(--blue);"> 當月收款紀錄
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="exp-tenant" checked style="width:15px;height:15px;accent-color:var(--blue);"> 租客資料（含緊急聯絡）
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="exp-lease" checked style="width:15px;height:15px;accent-color:var(--blue);"> 租期資料（入住、退租、押金）
+      </label>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('export-modal')">取消</button>
+      <button class="btn btn-primary" onclick="doExportCSV()">匯出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 刪除房間確認 Modal -->
+<div class="modal-ov" id="delete-room-modal" style="display:none;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-hd"><span class="modal-title">確認刪除房間</span><button class="modal-close" onclick="closeModal('delete-room-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div style="font-size:13px;color:var(--red-dk);background:var(--red-bg);border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+        ⚠ 刪除後無法復原，請輸入你的帳號確認。
+      </div>
+      <div class="ff"><label>輸入你的帳號</label><input type="text" id="delete-confirm-username" placeholder="輸入帳號確認" autocomplete="off"></div>
+      <input type="hidden" id="delete-room-id">
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('delete-room-modal')">取消</button>
+      <button class="btn btn-danger" onclick="confirmDeleteRoom()">確認刪除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改帳確認 Modal -->
+<div class="modal-ov" id="adjust-modal" style="display:none;">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-hd"><span class="modal-title">改帳確認</span><button class="modal-close" onclick="closeModal('adjust-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+        房間：<b id="adj-room-name"></b>　目前金額：<b id="adj-current-status" style="font-family:'DM Mono',monospace;color:var(--green-dk)"></b>
+      </div>
+      <div class="ff" style="margin-bottom:10px;"><label>修改為（元）</label>
+        <input type="number" id="adj-new-amount" placeholder="輸入修改後的金額" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;">
+      </div>
+      <div class="ff" style="margin-bottom:10px;"><label>改帳原因（選填）</label><input type="text" id="adj-reason" placeholder="例：租客補繳、系統錯誤修正"></div>
+      <div class="ff"><label>輸入你的帳號確認</label><input type="text" id="adj-username" placeholder="輸入帳號確認" autocomplete="off"></div>
+      <input type="hidden" id="adj-room-id">
+      <input type="hidden" id="adj-month-key">
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('adjust-modal')">取消</button>
+      <button class="btn btn-primary" onclick="confirmAdjust()">確認改帳</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- EXPIRY NOTICE -->
+<div id="expiry-banner" style="display:none;position:fixed;top:0;left:230px;right:0;z-index:50;background:#FAEEDA;border-bottom:1px solid #EF9F27;padding:10px 20px;font-size:13px;color:#854F0B;">
+  <div style="display:flex;align-items:flex-start;gap:10px;max-width:900px;">
+    <span style="font-size:16px;flex-shrink:0;">⚠️</span>
+    <div style="flex:1;" id="expiry-content"></div>
+    <button onclick="document.getElementById('expiry-banner').style.display='none'" style="background:none;border:none;font-size:18px;cursor:pointer;color:#854F0B;line-height:1;flex-shrink:0;">×</button>
+  </div>
+</div>
+
+<!-- 待修逾期橫幅 -->
+<div class="overdue-banner" id="overdue-banner">
+  <div style="display:flex;align-items:flex-start;gap:10px;max-width:900px;">
+    <span style="font-size:15px;flex-shrink:0;">🔴</span>
+    <div style="flex:1;" id="overdue-content"></div>
+    <button onclick="document.getElementById('overdue-banner').classList.remove('show')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--red-dk);line-height:1;flex-shrink:0;">×</button>
+  </div>
+</div>
+
+<!-- 儲電通知 Modal -->
+<div class="modal-ov" id="elec-topup-modal" style="display:none;">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-hd"><span class="modal-title" id="elec-topup-modal-title">記錄儲電</span><button class="modal-close" onclick="closeModal('elec-topup-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div class="ff" style="margin-bottom:12px;"><label>儲值金額（元）</label><input type="number" id="et-amount" placeholder="例：500" min="0"></div>
+      <div class="ff"><label>備註（選填）</label><input type="text" id="et-note" placeholder="例：預付2個月"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('elec-topup-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveElecTopup()">記錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- 待修備忘錄 Modal -->
+<div class="modal-ov" id="repair-modal" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-hd"><span class="modal-title" id="repair-modal-title">待修備忘錄</span><button class="modal-close" onclick="closeModal('repair-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">選擇問題項目（可多選）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;" id="repair-options"></div>
+      <div class="ff"><label>其他問題（自行輸入）</label><input type="text" id="repair-custom" placeholder="例：天花板漏水"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('repair-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveRepair()">新增待修</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+let rooms=[], payments={}, managers=[], addresses=[], tenantArchive=[], curYear, curMonth, editingRoomId=null;
+let currentUser=null, activeAddr='all';
+
+const now=new Date(); curYear=now.getFullYear(); curMonth=now.getMonth();
+let histYear=now.getFullYear(), histMonth=now.getMonth(), histAddr='all';
+
+function monthKey(){ return `${curYear}-${String(curMonth+1).padStart(2,'0')}`; }
+function monthLabel(){ return `${curYear} 年 ${curMonth+1} 月`; }
+function getPayment(id){ const k=monthKey(); return (payments[k]&&payments[k][id])||{status:'unpaid'}; }
+function getStatus(id){ return getPayment(id).status||'unpaid'; }
+function setStatus(id,s){
+  const k=monthKey();
+  if(!payments[k]) payments[k]={};
+  const prev=payments[k][id]||{};
+  if(s==='unpaid'){
+    payments[k][id]={status:'unpaid', clearedAt: new Date().toISOString()};
+  } else {
+    payments[k][id]={
+      status:s,
+      paidAt: prev.paidAt||(s!=='unpaid'?new Date().toISOString():null),
+      updatedAt: new Date().toISOString(),
+      method: 'manual'
+    };
+  }
+  save(); renderAll();
+}
+
+// ── PERSIST ──
+function save(){
+  try{
+    localStorage.setItem('rg_rooms',JSON.stringify(rooms));
+    localStorage.setItem('rg_payments',JSON.stringify(payments));
+    localStorage.setItem('rg_managers',JSON.stringify(managers));
+    localStorage.setItem('rg_addresses',JSON.stringify(addresses));
+    localStorage.setItem('rg_archive',JSON.stringify(tenantArchive));
+  }catch(e){}
+}
+function load(){
+  try{
+    const r=localStorage.getItem('rg_rooms'); if(r) rooms=JSON.parse(r);
+    const p=localStorage.getItem('rg_payments'); if(p){
+      const raw=JSON.parse(p);
+      // migrate old string format to object format
+      Object.keys(raw).forEach(month=>{
+        Object.keys(raw[month]).forEach(rid=>{
+          if(typeof raw[month][rid]==='string'){
+            raw[month][rid]={status:raw[month][rid]};
+          }
+        });
+      });
+      payments=raw;
+    }
+    const m=localStorage.getItem('rg_managers'); if(m) managers=JSON.parse(m);
+    const a=localStorage.getItem('rg_addresses'); if(a){
+      const raw=JSON.parse(a);
+      // migrate: old format was string[], new is [{name,managers:[]}]
+      if(raw.length>0 && typeof raw[0]==='string'){
+        addresses=raw.map(name=>({name,managers:[]}));
+      } else {
+        addresses=raw;
+      }
+    }
+    const arc=localStorage.getItem('rg_archive'); if(arc) tenantArchive=JSON.parse(arc);
+  }catch(e){}
+}
+
+const DEFAULT_OWNER={id:'owner',name:'房東',username:'admin',password:'admin123',role:'owner'};
+
+function getUsers(){ return [DEFAULT_OWNER,...managers]; }
+
+function doLogin(){
+  const u=document.getElementById('login-user').value.trim();
+  const p=document.getElementById('login-pass').value;
+  const found=getUsers().find(x=>x.username===u&&x.password===p);
+  if(!found){ document.getElementById('auth-err').style.display='block'; document.getElementById('auth-err').textContent='帳號或密碼錯誤，請再試一次'; return; }
+  // 停權檢查（owner 不可被停權）
+  if(found.suspended&&found.role!=='owner'){
+    document.getElementById('auth-err').style.display='block';
+    document.getElementById('auth-err').textContent='此帳號已停權，請聯絡管理員';
+    return;
+  }
+  currentUser=found;
+  document.getElementById('auth-err').style.display='none';
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-screen').style.display='flex';
+  document.getElementById('nav-name').textContent=found.name;
+  document.getElementById('nav-role').textContent=found.role==='owner'?'Admin（最高權限）':found.role==='coowner'?'副管理員':'管理人';
+  document.getElementById('nav-avatar').textContent=found.name[0];
+  document.getElementById('nav-avatar').style.background=found.role==='owner'?'#EDE9FE':found.role==='coowner'?'#FEF3C7':'#E6F1FB';
+  document.getElementById('nav-avatar').style.color=found.role==='owner'?'#4C1D95':found.role==='coowner'?'#92400E':'#185FA5';
+  // hide manager menu for non-owners
+  document.getElementById('nav-managers').style.display=isOwner()?'':'none';
+  document.getElementById('nav-addr-mgr').style.display=isOwner()?'':'none';
+  document.getElementById('nav-archive').style.display=isAdmin()?'':'none';
+  loadCfg();
+  renderAll();
+}
+
+document.getElementById('login-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+function doLogout(){
+  currentUser=null;
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+}
+
+function isOwner(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='coowner'); }
+function isAdmin(){ return currentUser&&currentUser.role==='owner'; }
+
+// ── NAV ──
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+const PAGE_IDX={dashboard:0,rooms:1,tenants:2,history:3,handover:4,report:5,mgrrpt:6,managers:7,addrmgr:8,archive:9,settings:10};
+const MOBILE_TABS=['dashboard','rooms','tenants','history'];
+function goPage(id){
+  if((id==='managers'||id==='addrmgr')&&!isOwner()){ toast('權限不足'); return; }
+  if(id==='archive'&&!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const navItems=document.querySelectorAll('.nav-item');
+  navItems.forEach(n=>n.classList.remove('active'));
+  const idx=PAGE_IDX[id]??0;
+  navItems[idx]?.classList.add('active');
+  // sync mobile tabs
+  MOBILE_TABS.forEach(t=>{
+    const el=document.getElementById('tab-'+t);
+    if(el) el.classList.toggle('active', t===id);
+  });
+  const moreTab=document.getElementById('tab-more');
+  if(moreTab) moreTab.classList.toggle('active', !MOBILE_TABS.includes(id));
+  closeSidebar();
+  renderAll();
+}
+
+function prevMonth(){ curMonth--; if(curMonth<0){curMonth=11;curYear--;} renderAll(); }
+function nextMonth(){ curMonth++; if(curMonth>11){curMonth=0;curYear++;} renderAll(); }
+
+// ── ADDRESS HELPERS ──
+function getAddresses(){ return [{name:'未分類',managers:[]},...addresses]; }
+function getAddrNames(){ return ['未分類',...addresses.map(a=>a.name)]; }
+
+// 取得目前使用者可見的地址（管理人只能看自己負責的）
+function getVisibleAddrNames(){
+  if(!currentUser || isOwner()) return getAddrNames(); // admin/coowner 看全部
+  const uid = currentUser.id;
+  // 管理人：看有勾選自己的地址 + 未分類（如果未分類沒有任何管理人設定）
+  const assigned = addresses.filter(a=>(a.managers||[]).includes(uid)).map(a=>a.name);
+  // 如果沒有任何地址指派，讓管理人看到空的（避免混淆）
+  return assigned.length>0 ? assigned : [];
+}
+
+// 過濾管理人可見的房間
+function getVisibleRooms(){
+  if(!currentUser || isOwner()) return rooms;
+  const visible = getVisibleAddrNames();
+  return rooms.filter(r=>(visible).includes(r.addr||'未分類'));
+}
+
+// 管理人對自己負責的房間有完整權限
+function canEditRoom(r){
+  if(isOwner()) return true;
+  if(!currentUser || currentUser.role!=='manager') return false;
+  const uid=currentUser.id;
+  const addrObj=addresses.find(a=>a.name===(r.addr||''));
+  return addrObj && (addrObj.managers||[]).includes(uid);
+}
+
+function promptNewAddr(){
+  const name=prompt('輸入新地址名稱（例：台中北屯區XX路）');
+  if(!name||!name.trim()) return;
+  const n=name.trim();
+  if(!addresses.find(a=>a.name===n)){ addresses.push({name:n,managers:[]}); save(); }
+  populateAddrSelect(n);
+  document.getElementById('f-addr').value=n;
+  renderAddrMgr();
+}
+
+function renderAddrBar(){
+  const bar=document.getElementById('room-addr-bar'); if(!bar) return;
+  const all=getVisibleAddrNames();
+  const visRooms=getVisibleRooms();
+  const counts={};
+  all.forEach(a=>counts[a]=0);
+  visRooms.forEach(r=>{ const a=r.addr||'未分類'; if(counts[a]!==undefined) counts[a]++; else counts[a]=1; });
+  bar.innerHTML=`<button class="addr-pill${activeAddr==='all'?' active':''}" onclick="setAddr('all')">全部<span class="addr-badge">${visRooms.length}</span></button>`+
+    all.filter(a=>counts[a]>0).map(a=>`<button class="addr-pill${activeAddr===a?' active':''}" onclick="setAddr('${a}')">${a}<span class="addr-badge">${counts[a]}</span></button>`).join('');
+}
+
+function setAddr(a){ activeAddr=a; renderAddrBar(); renderRooms(); }
+
+function autoFillDeposit(){
+  // 只在新增房間時自動帶入（編輯時不覆蓋原本的押金）
+  if(editingRoomId) return;
+  const rent=parseInt(document.getElementById('f-rent').value)||0;
+  const depositEl=document.getElementById('f-deposit');
+  if(depositEl&&rent>0) depositEl.value=rent*2;
+}
+
+function populateAddrSelect(currentVal){
+  const sel=document.getElementById('f-addr'); if(!sel) return;
+  // 新增房間：不顯示未分類；編輯房間：如果原本是未分類就顯示
+  const isEditing = !!editingRoomId;
+  let addrList = isOwner() ? getAddrNames() : getVisibleAddrNames().length>0 ? ['未分類',...getVisibleAddrNames().filter(a=>a!=='未分類')] : getAddrNames();
+  if(!isEditing) addrList = addrList.filter(a=>a!=='未分類');
+  sel.innerHTML=addrList.map(a=>`<option value="${a}"${a===currentVal?' selected':''}>${a}</option>`).join('');
+  if(!currentVal&&!isOwner()){
+    const firstAddr=getVisibleAddrNames().find(a=>a!=='未分類');
+    if(firstAddr) sel.value=firstAddr;
+  }
+}
+
+
+function onAddrChange(){
+  if(editingRoomId) return;
+  const selAddr = document.getElementById('f-addr')?.value;
+  const addrObj = addresses.find(a=>a.name===selAddr);
+  if(addrObj?.elecType) setElecType(addrObj.elecType);
+  if(addrObj?.elecType==='prepay'){
+    const elecAccEl=document.getElementById('f-elec-acc');
+    if(elecAccEl&&!elecAccEl.value&&addrObj.elecAcc) elecAccEl.value=addrObj.elecAcc;
+    const elecPriceEl=document.getElementById('f-elec-price');
+    if(elecPriceEl&&!elecPriceEl.value&&addrObj.elecPrice) elecPriceEl.value=addrObj.elecPrice;
+  }
+}
+
+function setElecType(type){
+  const isMonthly = type==='monthly';
+  document.getElementById('elec-opt-monthly').style.border = isMonthly?'2px solid var(--text)':'1px solid var(--border)';
+  document.getElementById('elec-opt-prepay').style.border = isMonthly?'1px solid var(--border)':'2px solid var(--text)';
+  document.getElementById('elec-field-monthly').style.display = isMonthly?'':'none';
+  document.getElementById('elec-field-prepay').style.display = isMonthly?'none':'';
+  document.getElementById('elec-field-price').style.display = isMonthly?'none':'';
+  document.getElementById('elec-opt-monthly').querySelector('div').style.color = isMonthly?'var(--text)':'var(--text2)';
+  document.getElementById('elec-opt-prepay').querySelector('div').style.color = isMonthly?'var(--text2)':'var(--text)';
+  updateExpected();
+}
+
+function updateExpected(){
+  const rent=parseInt(document.getElementById('f-rent').value)||0;
+  const elec=parseInt(document.getElementById('f-elec').value)||0;
+  const isPrepay = document.getElementById('elec-opt-prepay').style.border.includes('2px');
+  document.getElementById('f-expected').textContent = isPrepay ? '$'+rent.toLocaleString() : '$'+(rent+elec).toLocaleString();
+}
+
+function renderAddrStats(){
+  const el=document.getElementById('dash-addr-stats'); if(!el) return;
+  const visRooms=getVisibleRooms();
+  const all=getVisibleAddrNames();
+  const stats={};
+  all.forEach(a=>stats[a]={total:0,paid:0,vacant:0,income:0,totalRent:0});
+  visRooms.forEach(r=>{
+    const a=r.addr||'未分類';
+    if(!stats[a]) stats[a]={total:0,paid:0,vacant:0,income:0,totalRent:0};
+    stats[a].total++;
+    stats[a].totalRent+=r.rent||0;
+    if(!r.tenant||!r.tenant.trim()) stats[a].vacant++;
+    else if(getStatus(r.id)==='paid'){ stats[a].paid++; stats[a].income+=r.rent||0; }
+  });
+  const entries=Object.entries(stats).filter(([,v])=>v.total>0);
+  if(!entries.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);">尚未設定地址</div>'; return; }
+  el.innerHTML=entries.map(([a,v])=>{
+    const rented=v.total-v.vacant;
+    return `
+    <div class="addr-stat-card">
+      <div class="addr-stat-name">📍 ${a}</div>
+      <div class="addr-stat-row"><span>總房間</span><span>${v.total} 間</span></div>
+      <div class="addr-stat-row"><span>出租中</span><span style="color:var(--blue-dk);font-weight:500;">${rented} 間</span></div>
+      <div class="addr-stat-row"><span>空房</span><span style="color:${v.vacant>0?'var(--amber-dk)':'var(--text3)'};">${v.vacant} 間</span></div>
+      <div class="addr-stat-row"><span>已收款</span><span style="color:var(--green-dk);font-weight:500;">${v.paid} / ${rented}</span></div>
+      <div class="addr-stat-bar"><div class="addr-stat-fill" style="width:${rented?Math.round(v.paid/rented*100):0}%"></div></div>
+    </div>`}).join('');
+}
+
+// ── RENDER ALL ──
+function renderAll(){
+  const ml=monthLabel();
+  ['dash-month','room-month','rpt-month','mgrrpt-month'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=ml;
+  });
+  const ds=document.getElementById('dash-sub'); if(ds) ds.textContent=ml+' 收款狀況';
+  updateHistMonthDisplay(); renderHistAddrBar();
+  renderDashboard(); renderRooms(); renderTenants(); renderHistory(); renderReport(); renderManagers(); renderAddrMgr(); renderHandover(); renderArchive(); renderMgrRpt();
+  renderAddrBar(); renderAddrStats(); checkExpiryNotices(); checkOverdueRepairs();
+  updateBadge();
+  // 管理人帳號頁：切換說明文字
+  const infoAdmin=document.getElementById('mgr-info-admin');
+  const infoSelf=document.getElementById('mgr-info-self');
+  if(infoAdmin) infoAdmin.style.display=isAdmin()?'':'none';
+  if(infoSelf) infoSelf.style.display=isAdmin()?'none':'';
+}
+
+function updateBadge(){
+  const u=getVisibleRooms().filter(r=>getStatus(r.id)==='unpaid'&&r.tenant&&r.tenant.trim()).length;
+  const b=document.getElementById('unpaid-badge');
+  if(b){ b.textContent=u; b.style.display=u?'':'none'; }
+  const tb=document.getElementById('tab-unpaid-badge');
+  if(tb){ tb.textContent=u; tb.style.display=u?'':'none'; }
+}
+
+// ── DASHBOARD ──
+function renderDashboard(){
+  const vr=getVisibleRooms();
+  const paid=vr.filter(r=>getStatus(r.id)==='paid');
+  const unpaid=vr.filter(r=>getStatus(r.id)==='unpaid'&&r.tenant&&r.tenant.trim());
+  const partial=vr.filter(r=>getStatus(r.id)==='partial');
+  const mk0=monthKey();
+  const income=paid.reduce((s,r)=>s+getActualRent(r,(payments[mk0]||{})[r.id]),0);
+  const totalRent=vr.reduce((s,r)=>s+getActualRent(r,(payments[mk0]||{})[r.id]),0);
+  const unpaidAmt=unpaid.reduce((s,r)=>s+getActualRent(r,(payments[mk0]||{})[r.id]),0);
+  const t=vr.length||1;
+  document.getElementById('s-total').textContent=vr.length;
+  document.getElementById('s-paid').textContent=paid.length+(partial.length?` +${partial.length}`:'');
+  document.getElementById('s-paid-h').textContent=t?Math.round(paid.length/t*100)+'% 收款率':'';
+  document.getElementById('s-unpaid').textContent=unpaid.length;
+  document.getElementById('s-unpaid-h').textContent=unpaidAmt?'$'+unpaidAmt.toLocaleString()+' 待收':'';
+  document.getElementById('s-income').textContent='$'+income.toLocaleString();
+  document.getElementById('s-income-h').textContent=totalRent?'共 $'+totalRent.toLocaleString():'';
+  const mkList=(arr,el)=>{
+    if(!arr.length){ el.innerHTML='<div style="padding:1rem;font-size:12px;color:var(--text3);text-align:center;">—</div>'; return; }
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+      arr.map(r=>`<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 12px;font-weight:600">${r.name}</td>
+        <td style="padding:7px 12px;color:var(--text2)">${r.tenant||'—'}</td>
+        <td style="padding:7px 12px;font-family:'DM Mono',monospace">$${r.rent.toLocaleString()}</td>
+      </tr>`).join('')+'</table>';
+  };
+  mkList(unpaid.concat(partial),document.getElementById('dash-unpaid'));
+  mkList(paid,document.getElementById('dash-paid'));
+}
+
+// ── ROOMS ──
+function renderRooms(){
+  const search=(document.getElementById('room-search')||{value:''}).value.toLowerCase();
+  const filter=(document.getElementById('room-filter')||{value:'all'}).value;
+  const visRooms=getVisibleRooms();
+  const list=visRooms.filter(r=>{
+    const s=getStatus(r.id);
+    const isVacant=!r.tenant||!r.tenant.trim();
+    const matchAddr = activeAddr==='all' || (r.addr||'未分類')===activeAddr;
+    const matchStatus = filter==='all' || (filter==='vacant'?isVacant:(!isVacant&&s===filter));
+    return (r.name.toLowerCase().includes(search)||((r.tenant||'').toLowerCase().includes(search))||((r.addr||'').toLowerCase().includes(search)))
+      && matchStatus && matchAddr;
+  });
+  const grid=document.getElementById('room-grid'); if(!grid) return;
+  if(!list.length){ grid.innerHTML='<div class="empty"><div class="eico">🏠</div>沒有房間，點右上角「新增房間」開始使用</div>'; return; }
+  grid.innerHTML=list.map(r=>{
+    const s=getStatus(r.id);
+    const bc=s==='paid'?'b-paid':s==='partial'?'b-partial':'b-unpaid';
+    const bt=s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
+    const isVacant = !r.tenant || !r.tenant.trim();
+    const canEdit=canEditRoom(r);
+    const isPrepay = r.elecType==='prepay';
+    // 儲電通知區塊
+    const pendingTopups = (r.elecTopups||[]).filter(t=>t.status==='pending');
+    const elecTopupSection = isPrepay ? `
+      <div class="section-divider"></div>
+      ${r.elecAcc?`<div class="elec-acc">⚡ 電費帳號：${r.elecAcc}</div>`:''}
+      ${pendingTopups.map(t=>`
+        <div class="elec-topup-box">
+          <div class="elec-topup-title">⚡ 儲電通知 — 待處理</div>
+          <div class="elec-topup-row">
+            <div>
+              <div class="elec-topup-amt">$${t.amount.toLocaleString()}</div>
+              <div class="elec-topup-time">${t.note||''} · ${t.date}${t.staff?' · '+t.staff:''}</div>
+            </div>
+            <button class="btn btn-sm btn-success" onclick="markElecDone('${r.id}','${t.id}')">已處理</button>
+          </div>
+        </div>`).join('')}
+      ${canEdit?`<button class="btn btn-sm" style="font-size:11px;margin-top:2px;" onclick="openElecTopupModal('${r.id}')">+ 記錄儲電</button>`:''}
+    ` : (r.elec>0?`<div class="rc-meta"><span style="color:var(--amber-dk);">⚡ 電費</span><span style="font-family:'DM Mono',monospace;color:var(--amber-dk);">$${r.elec.toLocaleString()}</span></div>`:'');
+    // 待修備忘錄區塊
+    const activeRepairs = (r.repairs||[]).filter(rep=>rep.status==='pending');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const repairSection = activeRepairs.length>0 ? `
+      <div class="section-divider"></div>
+      <div class="repair-box">
+        <div class="repair-title">🔧 待修項目</div>
+        <div>${activeRepairs.map(rep=>{
+          const days=Math.floor((today-new Date(rep.date))/(1000*60*60*24));
+          const isOD=days>=5;
+          return `<span class="repair-tag${isOD?' overdue':''}">${rep.label}<span class="repair-days">${days>0?' · '+days+'天':''}</span></span>`;
+        }).join('')}</div>
+        ${canEdit?`<button class="repair-done-btn" onclick="openRepairModal('${r.id}')">管理待修項目</button>`:''}
+      </div>` : (canEdit?`<div class="section-divider"></div><button class="btn btn-sm" style="font-size:11px;width:100%;justify-content:center;" onclick="openRepairModal('${r.id}')">+ 新增待修</button>`:'');
+    const elecSection = elecTopupSection;
+    return `<div class="room-card ${isVacant?'vacant':s}">
+      <div class="rc-top">
+        <div><div class="rc-name">${r.name}</div><div class="rc-tenant">${isVacant?'—':r.tenant}</div></div>
+        ${isVacant?'<span class="badge b-vacant">空房</span>':`<span class="badge ${bc}">${bt}</span>`}
+      </div>
+      <div class="rc-acc">${r.acc||'尚未設定虛擬帳號'}</div>
+      <div class="rc-meta"><span>${r.addr?'📍 '+r.addr:'未分類'}</span><span class="rc-rent">$${r.rent.toLocaleString()}</span></div>
+      ${r.phone?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📞 ${r.phone}</div>`:''}
+      ${elecSection}
+      ${repairSection}
+      <div class="rc-acts" style="margin-top:6px;">
+        ${s!=='paid'?`<button class="btn btn-sm btn-success" onclick="setStatus('${r.id}','paid')">✓ 租金已付</button>`:''}
+        ${s==='unpaid'?`<button class="btn btn-sm btn-warn" onclick="setStatus('${r.id}','partial')">部分</button>`:''}
+        ${s!=='unpaid'?`<button class="btn btn-sm" onclick="setStatus('${r.id}','unpaid')">撤銷</button>`:''}
+        ${canEdit?`<button class="btn btn-sm" onclick="openRoomModal('${r.id}')">編輯</button>`:''}
+        ${canEdit?`<button class="btn btn-sm btn-danger" onclick="deleteRoom('${r.id}')">刪除</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── TENANTS ──
+function renderTenants(){
+  const search=(document.getElementById('tenant-search')||{value:''}).value.toLowerCase();
+  const tbody=document.getElementById('tenant-tbody'); if(!tbody) return;
+  const list=getVisibleRooms().filter(r=>(r.tenant||'').toLowerCase().includes(search)||(r.phone||'').includes(search)||(r.addr||'').toLowerCase().includes(search)||(r.name||'').toLowerCase().includes(search));
+  if(!list.length){ tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:1.5rem">無租客資料</td></tr>'; return; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const oneMonth=new Date(today); oneMonth.setMonth(oneMonth.getMonth()+1);
+  tbody.innerHTML=list.map(r=>{
+    let checkoutCell='—';
+    if(r.checkout){
+      const d=parseLocalDate(r.checkout);
+      const diff=Math.ceil((d-today)/(1000*60*60*24));
+      if(diff<0){
+        checkoutCell=`<span style="color:var(--text3);font-size:12px;">${r.checkout}<br><span style="color:var(--red-dk);">已退租</span></span>`;
+      } else if(diff<=45){
+        checkoutCell=`<span style="color:var(--amber-dk);font-weight:500;">${r.checkout}<br><span style="font-size:11px;">剩 ${diff} 天</span></span>`;
+      } else {
+        checkoutCell=r.checkout;
+      }
+    }
+    return `<tr>
+      <td><b>${r.name}</b></td>
+      <td>${r.tenant||'—'}</td>
+      <td>${r.phone||'—'}</td>
+      <td style="color:var(--red-dk);font-size:12px;">${r.emergency||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
+      <td>${r.checkin||'—'}</td>
+      <td>${checkoutCell}</td>
+      <td class="mono">${r.deposit?'$'+r.deposit.toLocaleString():'—'}</td>
+      <td class="mono">$${r.rent.toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--text3)">${r.note||'—'}</td>
+      <td>${canEditRoom(r)?`<button class="btn btn-sm" onclick="openRoomModal('${r.id}')">編輯</button>`:''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── HISTORY ──
+function formatDT(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
+  const date=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  const time=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${date} ${time}`;
+}
+
+// ── 取得實際應收金額（月結含電費，儲值電費分開）──
+function getActualRent(r, pay){
+  if(!r||!r.tenant) return 0;
+  // 如果有改帳金額，以改帳為準
+  if(pay?.adjustedAmount!=null) return pay.adjustedAmount;
+  if(r.elecType==='monthly') return (r.rent||0)+(r.elec||0);
+  return r.rent||0;
+}
+function getActualRentLabel(r, pay){
+  // 改帳後顯示改帳金額 + ⚠
+  if(pay?.adjustedAmount!=null){
+    return `<span style="color:var(--amber-dk);font-weight:600;">$${pay.adjustedAmount.toLocaleString()}</span>`;
+  }
+  if(r.elecType==='monthly'&&r.elec>0)
+    return `$${(r.rent||0).toLocaleString()} <span style="font-size:10px;color:var(--amber-dk)">+電$${r.elec.toLocaleString()}</span>`;
+  return `$${(r.rent||0).toLocaleString()}`;
+}
+
+function renderHistAddrBar(){
+  const bar=document.getElementById('hist-addr-bar'); if(!bar) return;
+  const addrNames=isOwner()?getAddrNames():getVisibleAddrNames();
+  const visR=getVisibleRooms();
+  const counts={};
+  addrNames.forEach(a=>counts[a]=0);
+  visR.forEach(r=>{ const a=r.addr||'未分類'; if(counts[a]!==undefined) counts[a]++; else counts[a]=1; });
+  bar.innerHTML=`<button class="addr-pill${histAddr==='all'?' active':''}" onclick="setHistAddr('all')">全部<span class="addr-badge">${visR.length}</span></button>`+
+    addrNames.filter(a=>counts[a]>0).map(a=>`<button class="addr-pill${histAddr===a?' active':''}" onclick="setHistAddr('${a}')">${a}<span class="addr-badge">${counts[a]}</span></button>`).join('');
+}
+function setHistAddr(a){ histAddr=a; renderHistAddrBar(); renderHistory(); }
+
+function renderHistory(){
+  const tbody=document.getElementById('hist-tbody'); if(!tbody) return;
+  const allVis=getVisibleRooms();
+  const visRooms=histAddr==='all'?allVis:allVis.filter(r=>(r.addr||'未分類')===histAddr);
+  if(!visRooms.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:1.5rem">無資料</td></tr>'; return; }
+  const isVacantRoom = r => !r.tenant||!r.tenant.trim();
+  const hk=histMonthKey();
+  tbody.innerHTML=visRooms.map(r=>{
+    const pay=(payments[hk]&&payments[hk][r.id])||{status:'unpaid'};
+    const s=pay.status||'unpaid';
+    const isVacant=isVacantRoom(r);
+    const bc=isVacant?'b-vacant':s==='paid'?'b-paid':s==='partial'?'b-partial':'b-unpaid';
+    const bt=isVacant?'空房':s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
+    const timeStr = s==='paid'||s==='partial' ? formatDT(pay.paidAt) : '—';
+    const isManual = pay.method==='manual';
+    const hasAdjLog = pay.adjHistory&&pay.adjHistory.length>0;
+    const adjDataId = 'adj-'+r.id+'-'+hk;
+    if(hasAdjLog) window._adjLogs=window._adjLogs||{}; if(hasAdjLog) window._adjLogs[adjDataId]=pay.adjHistory;
+    const isPrepay=r.elecType==='prepay';
+    // 主要租金行
+    const rentRow=`<tr style="${isVacant?'opacity:.55':''}">
+      <td><b>${r.name}</b></td>
+      <td>${r.tenant||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
+      <td class="mono" style="font-size:11px">${r.acc||'—'}</td>
+      <td class="mono">${isVacant?'—':getActualRentLabel(r,pay)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span class="badge ${bc}">${bt}</span>
+          ${hasAdjLog&&canSeeAdjLog(r)?`<button class="adj-btn" onclick="showAdjLogById(this,'${adjDataId}')">⚠</button>`:''}
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--text2);">
+        ${s!=='unpaid'&&!isVacant?`<span>${timeStr}</span>${isManual?`<span style="font-size:10px;color:var(--text3);display:block;">手動確認${pay.adjHistory?.length?' · '+pay.adjHistory[pay.adjHistory.length-1].by:''}</span>`:'<span style="font-size:10px;color:var(--blue-dk);display:block;">銀行到帳</span>'}`:' — '}
+      </td>
+      <td style="white-space:nowrap;">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          ${!isVacant&&s!=='paid'?`<button class="btn btn-sm btn-success" onclick="setHistStatus('${r.id}','paid')">✓ 已付</button>`:''}
+          ${!isVacant&&s!=='unpaid'?`<button class="btn btn-sm" onclick="setHistStatus('${r.id}','unpaid')">撤銷</button>`:''}
+          ${!isVacant&&canSeeAdjLog(r)?`<button class="btn btn-sm" style="color:var(--amber-dk);border-color:var(--amber);" onclick="openAdjustModal('${r.id}','${hk}')">改帳</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+    // 儲值電費獨立行（每筆已處理的儲電）
+    const elecRows=(isPrepay&&!isVacant)?(pay.elecTopupLog||[]).map(t=>`
+      <tr style="background:rgba(245,158,11,.04);">
+        <td style="font-size:12px;color:var(--amber-dk);padding-left:16px;">⚡ ${r.name} 儲電</td>
+        <td style="font-size:12px;">${r.tenant||'—'}</td>
+        <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
+        <td class="mono" style="font-size:11px">${r.elecAcc||'—'}</td>
+        <td class="mono" style="color:var(--amber-dk);">$${t.amount.toLocaleString()}</td>
+        <td><span class="badge" style="background:#FEF3C7;color:#92400E;font-size:11px;">已儲電</span></td>
+        <td style="font-size:11px;color:var(--text3);">
+          <span>${t.doneAt?new Date(t.doneAt).toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</span>
+          <span style="display:block;font-size:10px;">⚡儲電 · ${t.by||'—'}</span>
+        </td>
+        <td></td>
+      </tr>`).join(''):'';
+    return rentRow+elecRows;
+  }).join('');
+}
+
+
+function setHistStatus(id,s){
+  const k=histMonthKey();
+  if(!payments[k]) payments[k]={};
+  if(s==="unpaid") payments[k][id]={status:"unpaid"};
+  else payments[k][id]={status:s,paidAt:new Date().toISOString(),method:"manual"};
+  save(); renderHistory(); toast(s==="paid"?"已標記付款":"已撤銷");
+}
+// ── REPORT ──
+let activeRptAddr='all';
+
+function renderRptAddrBar(){
+  const bar=document.getElementById('rpt-addr-bar'); if(!bar) return;
+  // 管理人只看自己負責的地址，admin 看全部
+  const addrNames = isOwner() ? getAddrNames() : getVisibleAddrNames();
+  const counts={};
+  addrNames.forEach(a=>counts[a]=0);
+  const visR=getVisibleRooms();
+  visR.forEach(r=>{ const a=r.addr||'未分類'; if(counts[a]!==undefined) counts[a]++; else counts[a]=1; });
+  bar.innerHTML=`<button class="addr-pill${activeRptAddr==='all'?' active':''}" onclick="setRptAddr('all')">全部<span class="addr-badge">${visR.length}</span></button>`+
+    addrNames.filter(a=>counts[a]>0).map(a=>`<button class="addr-pill${activeRptAddr===a?' active':''}" onclick="setRptAddr('${a}')">${a}<span class="addr-badge">${counts[a]}</span></button>`).join('');
+}
+
+function setRptAddr(a){ activeRptAddr=a; renderRptAddrBar(); renderReport(); }
+
+// 把 YYYY-MM-DD 字串轉成本地時間午夜，避免時區問題
+function parseLocalDate(str){
+  if(!str) return null;
+  const [y,m,d]=str.split('-').map(Number);
+  const dt=new Date(y,m-1,d); dt.setHours(0,0,0,0); return dt;
+}
+
+function renderReport(){
+  renderRptAddrBar();
+  const visRooms=getVisibleRooms();
+  const filtered = activeRptAddr==='all' ? visRooms : visRooms.filter(r=>(r.addr||'未分類')===activeRptAddr);
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  // 分類
+  const vacant=filtered.filter(r=>!r.tenant||!r.tenant.trim());
+  const rented=filtered.filter(r=>r.tenant&&r.tenant.trim());
+  const paid=rented.filter(r=>getStatus(r.id)==='paid');
+  const partial=rented.filter(r=>getStatus(r.id)==='partial');
+  const unpaid=rented.filter(r=>getStatus(r.id)==='unpaid');
+
+  // 退租（有 checkout 且已到期）
+  const terminated=filtered.filter(r=>{
+    if(!r.checkout||!r.tenant) return false;
+    return parseLocalDate(r.checkout)<=today;
+  });
+  // 押金統計：從 depositData 抓實際退還金額
+  const depositFiltered=filtered.filter(r=>r.deposit>0);
+  // 已退還（現有房間）= depositData.returned
+  const depositReturned=depositFiltered.filter(r=>r.depositData?.returned);
+  // 待退還 = 已點交 但 未退押金
+  const depositPending=depositFiltered.filter(r=>{
+    if(r.depositData?.returned) return false;
+    return r.handoverData?.done;
+  });
+  // 已退還金額：現有房間 + 歷史已歸檔（押金退還後清空的）
+  const totalDeposit=depositFiltered.reduce((s,r)=>s+(r.deposit||0),0);
+  const totalReturnedActive=depositReturned.reduce((s,r)=>s+(r.depositData?.amount||0),0);
+  // 歷史歸檔的退押金額（過濾到同一地址）
+  const archiveFiltered=(tenantArchive||[]).filter(a=>activeRptAddr==='all'||(a.addr||'未分類')===activeRptAddr);
+  const totalReturnedArchive=archiveFiltered.reduce((s,a)=>s+(a.depositReturned||0),0);
+  const totalReturned=totalReturnedActive+totalReturnedArchive;
+
+  const [ry,rm]=[curYear,curMonth+1];
+  const mk1=monthKey();
+  const elecPrepayIncome=filtered.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+    const done=(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done') return false;
+      // 用 doneAt (ISO) 比對月份，date 是中文格式不可靠
+      const raw=t.doneAt||t.date||'';
+      const d=raw?new Date(raw):null;
+      if(!d||isNaN(d)) return false;
+      return d.getFullYear()===ry&&d.getMonth()+1===rm;
+    });
+    return s+done.reduce((ss,t)=>ss+t.amount,0);
+  },0);
+  const income=paid.reduce((s,r)=>s+getActualRent(r,(payments[mk1]||{})[r.id]),0)+elecPrepayIncome;
+  const totalRent=rented.reduce((s,r)=>s+getActualRent(r,(payments[mk1]||{})[r.id]),0)+elecPrepayIncome;
+
+  // 收款率長條
+  const bars=document.getElementById('rpt-bars'); if(!bars) return;
+  bars.innerHTML=[
+    {l:'已付款',n:paid.length,c:'var(--green)'},
+    {l:'部分付',n:partial.length,c:'var(--amber)'},
+    {l:'未付款',n:unpaid.length,c:'var(--red)'},
+    {l:'空房',n:vacant.length,c:'var(--border2)'},
+  ].map(x=>`<div class="bar-row">
+    <span class="bar-lbl">${x.l}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.round(x.n/(filtered.length||1)*100)}%;background:${x.c}"></div></div>
+    <span class="bar-val">${x.n}間 (${Math.round(x.n/(filtered.length||1)*100)}%)</span>
+  </div>`).join('');
+
+  // 金額統計
+  const money=document.getElementById('rpt-money');
+  if(money) money.innerHTML=`
+    <div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3)">總房間 / 出租中 / 空房</div>
+      <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace">${filtered.length} / ${rented.length} / <span style="color:var(--amber-dk)">${vacant.length}</span></div></div>
+    <div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3)">應收總額（含電費）</div><div style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace">$${totalRent.toLocaleString()}</div></div>
+    <div style="margin-bottom:4px"><div style="font-size:11px;color:var(--text3)">已收（租金）</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--green-dk)">$${(income-elecPrepayIncome).toLocaleString()}</div></div>
+    ${elecPrepayIncome>0?`<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3)">已收（儲值電費）</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber-dk)">$${elecPrepayIncome.toLocaleString()}</div></div>`:'<div style="margin-bottom:8px"></div>'}
+    <div><div style="font-size:11px;color:var(--text3)">待收</div><div style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red-dk)">$${(totalRent-income).toLocaleString()}</div></div>`;
+
+  // 退租統計
+  const term=document.getElementById('rpt-terminated');
+  if(term) term.innerHTML=`
+    <div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3)">已退租</div>
+      <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text2)">${terminated.length} 間</div></div>
+    <div style="font-size:12px;color:var(--text2);">
+      ${terminated.length?terminated.map(r=>`
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
+          <span>${r.name} · ${r.tenant}</span>
+          <span style="color:var(--text3)">${r.checkout}</span>
+        </div>`).join(''):'<span style="color:var(--text3)">本月無退租</span>'}
+    </div>`;
+
+  // 押金退還統計
+  const dep=document.getElementById('rpt-deposit');
+  if(dep) dep.innerHTML=`
+    <div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3)">已退還 / 待退還</div>
+      <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace">
+        <span style="color:var(--green-dk)">${depositReturned.length+archiveFiltered.length}</span> / <span style="color:${depositPending.length?'var(--red-dk)':'var(--text3)'}">${depositPending.length}</span> 間
+      </div></div>
+    <div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text3)">實際退還金額（含已退租）</div>
+      <div style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--green-dk)">$${totalReturned.toLocaleString()}</div></div>
+    <div><div style="font-size:11px;color:var(--text3)">押金總額（現有房間）</div>
+      <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text2)">$${totalDeposit.toLocaleString()}</div></div>
+    ${depositPending.length?`<div style="margin-top:8px;font-size:11px;color:var(--red-dk);">⚠ 待退押金：${depositPending.map(r=>r.name).join('、')}</div>`:''}`;
+
+  // 報表表格
+  const tbody=document.getElementById('rpt-tbody'); if(!tbody) return;
+  tbody.innerHTML=filtered.map(r=>{
+    const isVacant=!r.tenant||!r.tenant.trim();
+    const s=getStatus(r.id);
+    const bc=isVacant?'b-vacant':s==='paid'?'b-paid':s==='partial'?'b-partial':'b-unpaid';
+    const bt=isVacant?'空房':s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
+    // 電費欄：月結顯示電費金額，儲值顯示本月已儲值總額
+    const isPrepayRoom=r.elecType==='prepay';
+    const elecMonthly=isPrepayRoom?0:(r.elec||0);
+    const elecPrepayTotal=isPrepayRoom?(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done') return false;
+      const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
+      return d&&!isNaN(d)&&d.getFullYear()===ry&&d.getMonth()+1===rm;
+    }).reduce((s,t)=>s+t.amount,0):0;
+    const elecDisplay=isPrepayRoom?elecPrepayTotal:elecMonthly;
+    const expected=isVacant?0:(r.rent||0)+elecMonthly; // 應收：儲值電費不計入租金應收
+    // 退租判斷
+    const isTerminated=r.checkout&&parseLocalDate(r.checkout)<=today&&r.tenant;
+    const checkoutCell=r.checkout?`<span style="color:${isTerminated?'var(--text3)':'var(--text2)'};">${r.checkout}${isTerminated?'<br><span style="font-size:10px;color:var(--text3)">已退租</span>':''}</span>`:'—';
+    // 押金退還
+    const dep=r.depositData;
+    const handoverDone=r.handoverData?.done;
+    const needsReturn=isTerminated&&r.deposit&&!dep?.returned;
+    const depositCell=r.deposit?`$${r.deposit.toLocaleString()}`:'—';
+    const returnedCell=dep?.returned?
+      `<span style="color:var(--green-dk);font-weight:500;">$${(dep.amount||0).toLocaleString()}</span>${dep.returnDate?`<br><span style="font-size:10px;color:var(--text3)">${dep.returnDate}</span>`:''}`:
+      (needsReturn?`<span style="color:var(--red-dk);font-size:12px;">⚠ 待退還</span>`:'—');
+    return `<tr style="${isVacant?'opacity:.6':''}">
+      <td style="font-size:12px;color:var(--text2)">${r.addr||'未分類'}</td>
+      <td><b>${r.name}</b></td>
+      <td>${r.tenant||'—'}</td>
+      <td class="mono">${isVacant?'—':'$'+(r.rent||0).toLocaleString()}</td>
+      <td class="mono" style="color:${elecDisplay&&!isVacant?'var(--amber-dk)':'var(--text3)'};">${elecDisplay&&!isVacant?(isPrepayRoom?`⚡$${elecDisplay.toLocaleString()}`:`$${elecDisplay.toLocaleString()}`):'—'}</td>
+      <td class="mono" style="font-weight:600;">${isVacant?'—':'$'+expected.toLocaleString()}</td>
+      <td><span class="badge ${bc}">${bt}</span></td>
+      <td style="font-size:12px;">${checkoutCell}</td>
+      <td class="mono" style="font-size:12px;">${depositCell}</td>
+      <td style="font-size:12px;">${returnedCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── MANAGERS ──
+function renderManagers(){
+  const tbody=document.getElementById('mgr-tbody'); if(!tbody) return;
+  const roleLabel={owner:'Admin',coowner:'副管理員',manager:'管理人'};
+  const roleBadge={owner:'b-owner',coowner:'b-coowner',manager:'b-admin'};
+  const all = isAdmin() ? [DEFAULT_OWNER,...managers] : [currentUser].filter(Boolean);
+  tbody.innerHTML=all.map(m=>{
+    const isSuspended=m.suspended===true;
+    const badge=isSuspended?'b-suspended':'';
+    const roleText=isSuspended?`${roleLabel[m.role]||'管理人'} ⛔停權`:(roleLabel[m.role]||'管理人');
+    const badgeClass=isSuspended?'b-suspended':(roleBadge[m.role]||'b-admin');
+    return `<tr style="${isSuspended?'opacity:.6':''}">
+      <td><b>${m.name}</b></td>
+      <td class="mono" style="font-size:12px">${m.username}</td>
+      <td><span class="badge ${badgeClass}">${roleText}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${m.createdAt||'系統預設'}</td>
+      <td style="display:flex;gap:5px;flex-wrap:wrap;">
+        ${isAdmin()&&m.role!=='owner'?`
+          <button class="btn btn-sm ${isSuspended?'btn-success':''}" onclick="toggleSuspend('${m.id}')">${isSuspended?'解除停權':'停權'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
+        `:''}
+        <button class="btn btn-sm" onclick="openChangePwModal('${m.id}')">改密碼</button>
+      </td>
+    </tr>`;
+  }).join('');
+  const addBtn=document.querySelector('#page-managers .btn-primary');
+  if(addBtn) addBtn.style.display=isAdmin()?'':'none';
+}
+
+function setMgrRole(role){
+  document.getElementById('role-opt-coowner').style.border=role==='coowner'?'2px solid var(--text)':'1px solid var(--border)';
+  document.getElementById('role-opt-manager').style.border=role==='manager'?'2px solid var(--text)':'1px solid var(--border)';
+}
+
+function openManagerModal(){
+  document.getElementById('mg-name').value='';
+  document.getElementById('mg-user').value='';
+  document.getElementById('mg-pass').value='';
+  setMgrRole('manager');
+  document.getElementById('mgr-modal').style.display='flex';
+}
+
+function saveManager(){
+  if(!isOwner()){ toast('權限不足'); return; }
+  const name=document.getElementById('mg-name').value.trim();
+  const username=document.getElementById('mg-user').value.trim();
+  const password=document.getElementById('mg-pass').value;
+  if(!name||!username||password.length<6){ toast('請填寫完整資料，密碼至少6字元'); return; }
+  if(getUsers().find(u=>u.username===username)){ toast('此帳號已存在'); return; }
+  const isCoowner=document.getElementById('role-opt-coowner').style.border.includes('2px');
+  const role=isCoowner?'coowner':'manager';
+  managers.push({id:'m'+Date.now(),name,username,password,role,createdAt:new Date().toLocaleDateString('zh-TW')});
+  save(); closeModal('mgr-modal'); renderManagers(); toast(isCoowner?'副管理員已新增':'管理人已新增');
+}
+function toggleSuspend(id){
+  if(!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  const m=managers.find(x=>x.id===id);
+  if(!m){ toast('找不到帳號'); return; }
+  if(m.role==='owner'){ toast('Admin 帳號不能停權'); return; }
+  const action=m.suspended?'解除停權':'停權';
+  if(!confirm(`確定${action}「${m.name}（${m.username}）」？`)) return;
+  m.suspended=!m.suspended;
+  save(); renderManagers();
+  toast(`已${action}「${m.name}」`);
+}
+
+function deleteManager(id){
+  if(!isOwner()){ toast('權限不足'); return; }
+  const m=managers.find(x=>x.id===id);
+  if(!m){ toast('找不到此帳號'); return; }
+  if(m.role==='owner'){ toast('Admin 帳號不能刪除'); return; }
+  if(!confirm(`確定移除「${m.name}」的帳號？`)) return;
+  managers=managers.filter(x=>x.id!==id); save(); renderManagers(); toast('已移除');
+}
+
+// ── ROOM MODAL ──
+function openRoomModal(id){
+  if(!id){
+    // 新增房間：只有 owner/coowner 可以，或管理人在自己有負責的地址才能新增
+    if(!isOwner()&&getVisibleAddrNames().length===0){ toast('權限不足'); return; }
+  }
+  editingRoomId=id||null;
+  document.getElementById('room-modal-title').textContent=id?'編輯房間':'新增房間';
+  if(id){
+    const r=rooms.find(x=>x.id===id)||{};
+    document.getElementById('f-name').value=r.name||'';
+    document.getElementById('f-rent').value=r.rent||'';
+    document.getElementById('f-tenant').value=r.tenant||'';
+    document.getElementById('f-phone').value=r.phone||'';
+    document.getElementById('f-emergency').value=r.emergency||'';
+    document.getElementById('f-checkin').value=r.checkin||'';
+    document.getElementById('f-checkout').value=r.checkout||'';
+    document.getElementById('f-deposit').value=r.deposit||'';
+    document.getElementById('f-elec').value=r.elec||'';
+    document.getElementById('f-elec-acc').value=r.elecAcc||'';
+    document.getElementById('f-elec-price').value=r.elecPrice||'';
+    document.getElementById('f-elec-balance').value=r.elecBalance||'';
+    document.getElementById('f-acc').value=r.acc||'';
+    document.getElementById('f-note').value=r.note||'';
+    populateAddrSelect(r.addr||'未分類');
+    setElecType(r.elecType||'monthly');
+    updateExpected();
+  } else {
+    ['f-name','f-tenant','f-phone','f-emergency','f-checkin','f-checkout','f-note','f-elec-acc'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('f-rent').value='';
+    document.getElementById('f-deposit').value='';
+    document.getElementById('f-elec').value='';
+    document.getElementById('f-elec-price').value='';
+    document.getElementById('f-elec-balance').value='';
+    document.getElementById('f-acc').value='';
+    populateAddrSelect('');
+    // 自動帶入地址的電費類型
+    const selAddr = document.getElementById('f-addr')?.value;
+    const addrObj = addresses.find(a=>a.name===selAddr);
+    setElecType(addrObj?.elecType||'monthly');
+    updateExpected();
+  }
+  document.getElementById('room-modal').style.display='flex';
+}
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+function saveRoom(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){ toast('請填寫房間名稱'); return; }
+  const addr=document.getElementById('f-addr').value||'未分類';
+  // 新增房間時不能選未分類
+  if(!editingRoomId && addr==='未分類'){ toast('請選擇所屬地址，不能為未分類'); return; }
+  const isPrepay = document.getElementById('elec-opt-prepay').style.border.includes('2px');
+  const data={name,rent:parseInt(document.getElementById('f-rent').value)||0,tenant:document.getElementById('f-tenant').value.trim(),phone:document.getElementById('f-phone').value.trim(),emergency:document.getElementById('f-emergency').value.trim(),checkin:document.getElementById('f-checkin').value,checkout:document.getElementById('f-checkout').value,deposit:parseInt(document.getElementById('f-deposit').value)||0,elecType:isPrepay?'prepay':'monthly',elec:parseInt(document.getElementById('f-elec').value)||0,elecAcc:document.getElementById('f-elec-acc').value.trim(),elecPrice:parseFloat(document.getElementById('f-elec-price').value)||0,elecBalance:parseInt(document.getElementById('f-elec-balance').value)||0,acc:document.getElementById('f-acc').value.trim(),note:document.getElementById('f-note').value.trim(),addr};
+  if(editingRoomId){ const r=rooms.find(x=>x.id===editingRoomId); if(r) Object.assign(r,data); }
+  else rooms.push({...data,id:'r'+Date.now()});
+  save(); closeModal('room-modal'); renderAll(); toast(editingRoomId?'已更新':'房間已新增');
+}
+function topupElec(id){
+  const input=document.getElementById('topup-'+id);
+  const amt=parseInt(input.value)||0;
+  if(amt<=0){ toast('請輸入儲值金額'); return; }
+  const r=rooms.find(x=>x.id===id); if(!r) return;
+  r.elecBalance=(r.elecBalance||0)+amt;
+  r.elecLastTopup=new Date().toLocaleDateString('zh-TW');
+  input.value='';
+  save(); renderRooms(); toast(`${r.name} 電費儲值 $${amt.toLocaleString()}，餘額 $${r.elecBalance.toLocaleString()}`);
+}
+
+function deductElec(id){
+  const amt=parseInt(prompt('扣除電費金額（元）：'))||0;
+  if(amt<=0) return;
+  const r=rooms.find(x=>x.id===id); if(!r) return;
+  if(amt>r.elecBalance){ toast('餘額不足'); return; }
+  r.elecBalance=(r.elecBalance||0)-amt;
+  save(); renderRooms(); toast(`${r.name} 扣除電費 $${amt.toLocaleString()}，剩餘 $${r.elecBalance.toLocaleString()}`);
+}
+
+// ── 地址管理 ──
+let editingAddrName = null;
+
+function renderAddrMgr(){
+  const tbody = document.getElementById('addr-mgr-tbody'); if(!tbody) return;
+  const allMgrs = managers; // 不含 DEFAULT_OWNER（admin 永遠有全部權限）
+  if(!addresses.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem">尚未新增地址，點右上角「+ 新增地址」</td></tr>';
+    return;
+  }
+  tbody.innerHTML = addresses.map(a=>{
+    const roomCount = rooms.filter(r=>r.addr===a.name).length;
+    const mgrNames = (a.managers||[]).map(uid=>{
+      const m = managers.find(x=>x.id===uid);
+      return m ? m.name : null;
+    }).filter(Boolean);
+    const elecLabel=a.elecType==='prepay'?`⚡儲值${a.elecAcc?'<br><span style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace">'+a.elecAcc+'</span>':''}${a.elecPrice?'<span style="font-size:10px;color:var(--amber-dk);"> $'+a.elecPrice+'/度</span>':''}`:
+      '<span style="color:var(--text3);">月結</span>';
+    return `<tr>
+      <td><b>${a.name}</b></td>
+      <td style="font-size:13px;">${roomCount} 間</td>
+      <td style="font-size:12px;">${elecLabel}</td>
+      <td style="font-size:12px;color:var(--text2);">${mgrNames.length>0?mgrNames.join('、'):'<span style="color:var(--text3)">未指派</span>'}</td>
+      <td><button class="btn btn-sm" onclick="openAddrMgrModal('${a.name}')">設定</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function setAddrElec(type){
+  document.getElementById('addr-elec-monthly').style.border=type==='monthly'?'2px solid var(--text)':'1px solid var(--border)';
+  document.getElementById('addr-elec-prepay').style.border=type==='prepay'?'2px solid var(--text)':'1px solid var(--border)';
+  const prepayFields=document.getElementById('addr-prepay-fields');
+  if(prepayFields) prepayFields.style.display=type==='prepay'?'':'none';
+}
+
+function openAddrMgrModal(name){
+  editingAddrName = name;
+  const a = addresses.find(x=>x.name===name)||{name,managers:[]};
+  document.getElementById('addr-mgr-modal-title').textContent = `${name} — 設定`;
+  document.getElementById('addr-edit-name').value = name;
+  // 設定電費類型
+  setAddrElec(a.elecType||'monthly');
+  document.getElementById('addr-elec-acc').value=a.elecAcc||'';
+  document.getElementById('addr-elec-price').value=a.elecPrice||'';
+  const checklist = document.getElementById('addr-mgr-checklist');
+  const allMgrs = managers.filter(m=>m.role==='manager'||m.role==='coowner');
+  if(!allMgrs.length){
+    checklist.innerHTML='<div style="font-size:13px;color:var(--text3);">尚未建立管理人帳號</div>';
+  } else {
+    checklist.innerHTML = allMgrs.map(m=>{
+      const checked = (a.managers||[]).includes(m.id);
+      const roleLabel = m.role==='coowner'?'副管理員':'管理人';
+      return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:${checked?'var(--blue-bg)':'var(--surface)'};transition:all .12s;">
+        <input type="checkbox" value="${m.id}" ${checked?'checked':''} onchange="toggleAddrMgr(this)" style="width:15px;height:15px;accent-color:var(--blue);flex-shrink:0;">
+        <div>
+          <div style="font-size:13px;font-weight:500;">${m.name}</div>
+          <div style="font-size:11px;color:var(--text3);">${m.username} · ${roleLabel}</div>
+        </div>
+      </label>`;
+    }).join('');
+  }
+  document.getElementById('addr-mgr-modal').style.display='flex';
+}
+
+function toggleAddrMgr(cb){
+  const lbl = cb.closest('label');
+  if(lbl) lbl.style.background = cb.checked ? 'var(--blue-bg)' : 'var(--surface)';
+}
+
+function saveAddrMgr(){
+  const newName = document.getElementById('addr-edit-name').value.trim();
+  if(!newName){ toast('地址名稱不可為空'); return; }
+  const a = addresses.find(x=>x.name===editingAddrName);
+  if(!a){ toast('找不到地址'); return; }
+  if(newName !== editingAddrName){
+    if(addresses.find(x=>x.name===newName)){ toast('此地址名稱已存在'); return; }
+    rooms.forEach(r=>{ if(r.addr===editingAddrName) r.addr=newName; });
+    a.name = newName;
+  }
+  // 儲存電費類型
+  const isMonthly = document.getElementById('addr-elec-monthly').style.border.includes('2px');
+  a.elecType = isMonthly?'monthly':'prepay';
+  if(!isMonthly){
+    a.elecAcc = document.getElementById('addr-elec-acc').value.trim();
+    a.elecPrice = parseFloat(document.getElementById('addr-elec-price').value)||0;
+  }
+  const checked = [...document.querySelectorAll('#addr-mgr-checklist input[type=checkbox]:checked')].map(cb=>cb.value);
+  a.managers = checked;
+  save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
+}
+
+function deleteAddr(){
+  if(!editingAddrName){ return; }
+  const roomCount = rooms.filter(r=>r.addr===editingAddrName).length;
+  if(roomCount>0){ toast(`此地址還有 ${roomCount} 間房間，請先將房間移至其他地址`); return; }
+  if(!confirm(`確定刪除地址「${editingAddrName}」？`)) return;
+  addresses = addresses.filter(a=>a.name!==editingAddrName);
+  save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址已刪除');
+}
+
+
+let elecTopupRoomId = null;
+// ── 改帳功能（Admin + 副管理員）──
+function canAdjust(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='coowner'); }
+// Admin 看全部改帳記錄；副管理員只看自己負責地址的
+function canSeeAdjLog(r){
+  if(!currentUser) return false;
+  if(currentUser.role==='owner') return true; // admin 看全部
+  if(currentUser.role==='coowner'){
+    // 副管理員看自己負責的地址
+    const addrObj=addresses.find(a=>a.name===(r.addr||''));
+    if(!addrObj) return true; // 未分類也看
+    return (addrObj.managers||[]).includes(currentUser.id)||true; // coowner 看全部（同 isOwner）
+  }
+  return false;
+}
+
+function openAdjustModal(roomId, mk){
+  if(!canAdjust()){ toast('此功能僅 Admin 和副管理員可使用'); return; }
+  const r=rooms.find(x=>x.id===roomId); if(!r) return;
+  const pay=(payments[mk]&&payments[mk][roomId])||{status:'unpaid'};
+  const currentAmt=pay.adjustedAmount!=null?pay.adjustedAmount:getActualRent(r);
+  document.getElementById('adj-room-name').textContent=r.name;
+  document.getElementById('adj-current-status').textContent='$'+currentAmt.toLocaleString();
+  document.getElementById('adj-new-amount').value=currentAmt;
+  document.getElementById('adj-reason').value='';
+  document.getElementById('adj-username').value='';
+  document.getElementById('adj-room-id').value=roomId;
+  document.getElementById('adj-month-key').value=mk;
+  document.getElementById('adjust-modal').style.display='flex';
+}
+
+function confirmAdjust(){
+  const roomId=document.getElementById('adj-room-id').value;
+  const mk=document.getElementById('adj-month-key').value;
+  const newAmount=parseInt(document.getElementById('adj-new-amount').value)||0;
+  const reason=document.getElementById('adj-reason').value.trim();
+  const username=document.getElementById('adj-username').value.trim();
+  if(!username){ toast('請輸入帳號'); return; }
+  if(username!==currentUser?.username){ toast('帳號不正確'); return; }
+  const r=rooms.find(x=>x.id===roomId); if(!r) return;
+  if(!payments[mk]) payments[mk]={};
+  const prev=payments[mk][roomId]||{};
+  const prevAmount=prev.adjustedAmount!=null?prev.adjustedAmount:getActualRent(r);
+  const adjLog={by:currentUser.username,at:new Date().toISOString(),fromAmount:prevAmount,toAmount:newAmount,reason};
+  const adjHistory=[...(prev.adjHistory||[]),adjLog];
+  payments[mk][roomId]={...prev,adjustedAmount:newAmount,updatedAt:new Date().toISOString(),adjHistory};
+  // 自動標記為已付款（如果金額>0）
+  if(newAmount>0&&(!prev.status||prev.status==='unpaid')){
+    payments[mk][roomId].status='paid';
+    payments[mk][roomId].paidAt=prev.paidAt||new Date().toISOString();
+    payments[mk][roomId].method='manual';
+  }
+  save(); closeModal('adjust-modal'); renderHistory(); renderReport(); renderDashboard();
+  toast(`已改帳：$${prevAmount.toLocaleString()} → $${newAmount.toLocaleString()}`);
+}
+
+function showAdjLogById(el, id){
+  const logs=(window._adjLogs&&window._adjLogs[id])||[];
+  showAdjLog(el, logs);
+}
+function showAdjLog(el,logs){
+  const existing=document.getElementById('adj-tooltip-popup');
+  if(existing){ existing.remove(); return; }
+  const tip=document.createElement('div');
+  tip.id='adj-tooltip-popup';
+  tip.className='adj-tooltip';
+  tip.innerHTML=logs.slice().reverse().map((l,i)=>`
+    <div style="${i>0?'margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.15)':''}">
+      <div class="adj-tooltip-row"><span class="adj-tooltip-label">改帳人</span><span>${l.by}</span></div>
+      <div class="adj-tooltip-row"><span class="adj-tooltip-label">時間</span><span>${formatDT(l.at)}</span></div>
+      ${l.fromAmount!=null?`<div class="adj-tooltip-row"><span class="adj-tooltip-label">改帳前</span><span>$${l.fromAmount.toLocaleString()}</span></div>`:''}
+      ${l.toAmount!=null?`<div class="adj-tooltip-row"><span class="adj-tooltip-label">改帳後</span><span>$${l.toAmount.toLocaleString()}</span></div>`:''}
+      ${l.reason?`<div class="adj-tooltip-row"><span class="adj-tooltip-label">原因</span><span>${l.reason}</span></div>`:''}
+    </div>`).join('');
+  el.style.position='relative';
+  el.appendChild(tip);
+  setTimeout(()=>document.addEventListener('click',function h(e){ if(!tip.contains(e.target)&&e.target!==el){tip.remove();document.removeEventListener('click',h);} }),0);
+}
+
+function openElecTopupModal(id){
+  elecTopupRoomId = id;
+  const r = rooms.find(x=>x.id===id);
+  document.getElementById('elec-topup-modal-title').textContent = (r?r.name:'') + ' — 記錄儲電';
+  document.getElementById('et-amount').value = '';
+  document.getElementById('et-note').value = '';
+  document.getElementById('elec-topup-modal').style.display = 'flex';
+}
+function saveElecTopup(){
+  const amt = parseInt(document.getElementById('et-amount').value)||0;
+  if(amt<=0){ toast('請輸入儲值金額'); return; }
+  const r = rooms.find(x=>x.id===elecTopupRoomId); if(!r) return;
+  if(!r.elecTopups) r.elecTopups = [];
+  r.elecTopups.push({
+    id:'et'+Date.now(), amount:amt,
+    note:document.getElementById('et-note').value.trim(),
+    date:new Date().toLocaleDateString('zh-TW'),
+    staff: currentUser?.username||currentUser?.name||'',
+    status:'pending'
+  });
+  save(); closeModal('elec-topup-modal'); renderRooms(); toast(`${r.name} 儲電 $${amt.toLocaleString()} 已記錄，待處理`);
+}
+function markElecDone(roomId, topupId){
+  const r = rooms.find(x=>x.id===roomId); if(!r) return;
+  const t = (r.elecTopups||[]).find(x=>x.id===topupId); if(!t) return;
+  t.status = 'done'; t.doneAt = new Date().toISOString();
+  t.doneBy = currentUser?.username||currentUser?.name||'';
+  // 加入收款紀錄（儲值電費）
+  const hk = histMonthKey();
+  if(!payments[hk]) payments[hk]={};
+  if(!payments[hk][roomId]) payments[hk][roomId]={status:'paid',paidAt:new Date().toISOString(),method:'manual'};
+  if(!payments[hk][roomId].elecTopupLog) payments[hk][roomId].elecTopupLog=[];
+  payments[hk][roomId].elecTopupLog.push({
+    amount:t.amount, date:t.date, doneAt:t.doneAt, by:t.doneBy
+  });
+  save(); renderRooms(); renderHistory(); renderReport(); renderMgrRpt(); toast('儲電已標記為已處理，收款紀錄已更新');
+}
+
+// ── 待修備忘錄 ──
+const REPAIR_OPTIONS = ['冷氣故障','熱水器故障','水管漏水','電燈不亮','門鎖故障','窗戶破損','牆壁滲水','廁所堵塞','網路故障','瓦斯問題'];
+let repairRoomId = null;
+let selectedRepairs = new Set();
+
+function openRepairModal(id){
+  repairRoomId = id;
+  const r = rooms.find(x=>x.id===id);
+  document.getElementById('repair-modal-title').textContent = (r?r.name:'') + ' — 待修備忘錄';
+  document.getElementById('repair-custom').value = '';
+  selectedRepairs = new Set();
+  const activeRepairs = (r?.repairs||[]).filter(rep=>rep.status==='pending');
+  const container = document.getElementById('repair-options');
+  container.innerHTML = REPAIR_OPTIONS.map(opt=>`
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--surface);transition:all .12s;" id="ropt-${opt}">
+      <input type="checkbox" value="${opt}" onchange="toggleRepairOpt('${opt}',this.checked)" style="width:14px;height:14px;accent-color:var(--red);flex-shrink:0;">
+      ${opt}
+    </label>`).join('');
+  // 顯示目前進行中的待修，並加上「標記完成」按鈕
+  if(activeRepairs.length>0){
+    container.innerHTML += `<div style="grid-column:1/-1;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">目前待修項目（點擊標記完成）</div>
+      ${activeRepairs.map(rep=>{
+        const days=Math.floor((new Date()-new Date(rep.date))/(1000*60*60*24));
+        const isOD=days>=5;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:12px;color:${isOD?'var(--red-dk)':'var(--text)'};">${isOD?'🔴 ':''}${rep.label}（${days}天）</span>
+          <button class="btn btn-sm btn-success" style="font-size:11px;" onclick="markRepairDone('${id}','${rep.id}')">✓ 已修</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+  document.getElementById('repair-modal').style.display = 'flex';
+}
+
+function toggleRepairOpt(opt, checked){
+  if(checked) selectedRepairs.add(opt);
+  else selectedRepairs.delete(opt);
+  const lbl = document.getElementById('ropt-'+opt);
+  if(lbl) lbl.style.background = checked?'var(--red-bg)':'var(--surface)';
+}
+
+function saveRepair(){
+  const r = rooms.find(x=>x.id===repairRoomId); if(!r) return;
+  if(!r.repairs) r.repairs = [];
+  const today = new Date().toISOString().split('T')[0];
+  let added = 0;
+  selectedRepairs.forEach(opt=>{
+    // 不重複加
+    const exists = r.repairs.find(rep=>rep.label===opt&&rep.status==='pending');
+    if(!exists){ r.repairs.push({id:'rp'+Date.now()+Math.random(),label:opt,date:today,status:'pending'}); added++; }
+  });
+  const custom = document.getElementById('repair-custom').value.trim();
+  if(custom){ r.repairs.push({id:'rp'+Date.now(),label:custom,date:today,status:'pending'}); added++; }
+  if(added===0){ toast('請選擇或輸入待修項目'); return; }
+  save(); closeModal('repair-modal'); renderRooms(); checkOverdueRepairs(); toast(`已新增 ${added} 個待修項目`);
+}
+
+function markRepairDone(roomId, repId){
+  const r = rooms.find(x=>x.id===roomId); if(!r) return;
+  const rep = (r.repairs||[]).find(x=>x.id===repId); if(!rep) return;
+  rep.status = 'done'; rep.doneAt = new Date().toISOString();
+  save(); closeModal('repair-modal'); renderRooms(); checkOverdueRepairs(); toast('待修項目已標記完成');
+}
+
+// ── 逾期待修提醒 ──
+function checkOverdueRepairs(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const overdueList = [];
+  rooms.forEach(r=>{
+    (r.repairs||[]).filter(rep=>rep.status==='pending').forEach(rep=>{
+      const days = Math.floor((today-new Date(rep.date))/(1000*60*60*24));
+      if(days>=5) overdueList.push({room:r.name,label:rep.label,days});
+    });
+  });
+  const banner = document.getElementById('overdue-banner');
+  const content = document.getElementById('overdue-content');
+  if(!banner||!content) return;
+  if(overdueList.length>0){
+    content.innerHTML = `<b>待修逾期提醒：</b>${overdueList.map(x=>`${x.room}「${x.label}」已 ${x.days} 天`).join('　|　')}`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function deleteRoom(id){
+  const r=rooms.find(x=>x.id===id);
+  if(!canEditRoom(r)){ toast('權限不足'); return; }
+  document.getElementById('delete-room-id').value=id;
+  document.getElementById('delete-confirm-username').value='';
+  document.getElementById('delete-room-modal').style.display='flex';
+}
+function confirmDeleteRoom(){
+  const id=document.getElementById('delete-room-id').value;
+  const input=document.getElementById('delete-confirm-username').value.trim();
+  if(!input){ toast('請輸入帳號'); return; }
+  if(input!==currentUser?.username){ toast('帳號不正確，請重新輸入'); return; }
+  rooms=rooms.filter(r=>r.id!==id);
+  save(); closeModal('delete-room-modal'); renderAll(); toast('已刪除');
+}
+function markAllPaid(){
+  if(!confirm('確定將本月所有房間標記為已付款？')) return;
+  if(!confirm('再次確認：這會覆蓋所有未付款狀態，確定嗎？')) return;
+  getVisibleRooms().filter(r=>r.tenant&&r.tenant.trim()).forEach(r=>setStatus(r.id,'paid'));
+  toast('已全部標記已付');
+}
+function resetMonth(){
+  if(!confirm('確定重置本月所有付款狀態？所有已付款記錄將清空。')) return;
+  if(!confirm('再次確認：此操作無法復原，確定要重置嗎？')) return;
+  const k=monthKey(); payments[k]={}; save(); renderAll(); toast('已重置');
+}
+
+// ── SETTINGS ──
+function loadCfg(){
+  try{
+    const c=JSON.parse(localStorage.getItem('rg_cfg')||'{}');
+    document.getElementById('cfg-mid').value=c.mid||'';
+    document.getElementById('cfg-hk').value=c.hk||'';
+    document.getElementById('cfg-hiv').value=c.hiv||'';
+    const hasConfig=c.mid&&c.hk;
+    document.getElementById('wh-dot').className='wh-dot'+(hasConfig?'':' inactive');
+    document.getElementById('wh-txt').textContent=hasConfig?'已設定，等待接收':'尚未設定';
+  }catch(e){}
+}
+function saveCfg(){
+  const cfg={mid:document.getElementById('cfg-mid').value.trim(),hk:document.getElementById('cfg-hk').value.trim(),hiv:document.getElementById('cfg-hiv').value.trim()};
+  localStorage.setItem('rg_cfg',JSON.stringify(cfg));
+  loadCfg(); toast('設定已儲存');
+}
+function copyWebhook(){
+  navigator.clipboard.writeText('https://your-app.vercel.app/api/webhook').catch(()=>{});
+  toast('Webhook 網址已複製');
+}
+function testWebhook(){ toast('Webhook 測試：模擬收款 101室 $8,000 → 已標記已付'); if(rooms.length){ setStatus(rooms[0].id,'paid'); } }
+function changePw(){
+  const old=document.getElementById('pw-old').value;
+  const nw=document.getElementById('pw-new').value;
+  if(!old||!nw){ toast('請填寫密碼欄位'); return; }
+  if(old!==DEFAULT_OWNER.password&&old!==currentUser?.password){ toast('目前密碼不正確'); return; }
+  if(nw.length<6){ toast('新密碼至少6個字元'); return; }
+  if(currentUser?.id==='owner') DEFAULT_OWNER.password=nw;
+  else { const m=managers.find(x=>x.id===currentUser.id); if(m) m.password=nw; save(); }
+  toast('密碼已更新');
+  ['pw-old','pw-new'].forEach(x=>document.getElementById(x).value='');
+}
+
+const SQL_TEXT=`-- 在 Supabase SQL Editor 執行此段建立資料表
+
+create table rooms (
+  id text primary key,
+  name text not null,
+  tenant text,
+  phone text,
+  rent integer default 0,
+  deposit integer default 0,
+  acc text,
+  checkin date,
+  note text,
+  created_at timestamptz default now()
+);
+
+create table payments (
+  id serial primary key,
+  room_id text references rooms(id),
+  month text not null,
+  status text default 'unpaid',
+  paid_at timestamptz,
+  amount integer
+);
+
+create table users (
+  id text primary key,
+  name text,
+  username text unique,
+  password_hash text,
+  role text default 'manager',
+  created_at timestamptz default now()
+);
+
+-- Row level security
+alter table rooms enable row level security;
+alter table payments enable row level security;`;
+
+function showDeploySQL(){
+  const el=document.getElementById('deploy-sql');
+  el.style.display=el.style.display==='none'?'block':'none';
+  el.textContent=SQL_TEXT;
+}
+
+// ── EXPORT ──
+// ── 收款紀錄獨立月份導航 ──
+function histMonthKey(){ return `${histYear}-${String(histMonth+1).padStart(2,'0')}`; }
+function histMonthLabel(){ return `${histYear} 年 ${histMonth+1} 月`; }
+function histPrevMonth(){ histMonth--; if(histMonth<0){histMonth=11;histYear--;} renderHistory(); updateHistMonthDisplay(); }
+function histNextMonth(){ histMonth++; if(histMonth>11){histMonth=0;histYear++;} renderHistory(); updateHistMonthDisplay(); }
+function updateHistMonthDisplay(){
+  const el=document.getElementById('hist-month-disp'); if(el) el.textContent=histMonthLabel();
+}
+
+// ── 改密碼 ──
+function openChangePwModal(uid){
+  const targetId=uid||'';
+  const isSelf=(targetId===currentUser?.id)||(targetId===''&&currentUser?.role==='owner')||(targetId===DEFAULT_OWNER.id&&currentUser?.role==='owner');
+  // Admin 幫別人改密碼時：不需要輸入原密碼；自己改或一般人改：需要原密碼
+  const needOld = !isAdmin() || isSelf;
+  document.getElementById('cpw-uid').value=targetId;
+  document.getElementById('cpw-old').value='';
+  document.getElementById('cpw-new').value='';
+  const oldRow=document.getElementById('cpw-old-row');
+  if(oldRow) oldRow.style.display=needOld?'':'none';
+  document.getElementById('changepw-modal').style.display='flex';
+}
+function doChangePw(){
+  const uid=document.getElementById('cpw-uid').value;
+  const oldPw=document.getElementById('cpw-old').value;
+  const newPw=document.getElementById('cpw-new').value;
+  if(newPw.length<6){ toast('新密碼至少6字元'); return; }
+  let target;
+  if(!uid||uid===DEFAULT_OWNER.id) target=DEFAULT_OWNER;
+  else target=managers.find(m=>m.id===uid);
+  if(!target){ toast('找不到帳號'); return; }
+  // Admin 幫別人改密碼不需驗證舊密碼；其他情況需要驗證
+  const isSelf=(uid===currentUser?.id)||((!uid||uid===DEFAULT_OWNER.id)&&currentUser?.role==='owner');
+  const skipOldCheck = isAdmin() && !isSelf;
+  if(!skipOldCheck && oldPw!==target.password){ toast('目前密碼不正確'); return; }
+  target.password=newPw;
+  if(uid&&uid!==DEFAULT_OWNER.id) save();
+  closeModal('changepw-modal'); toast('密碼已更新');
+}
+
+// ── 匯出 CSV ──
+function openExportModal(){
+  const sel=document.getElementById('exp-addr');
+  sel.innerHTML='<option value="all">全部地址</option>'+getAddrNames().map(a=>`<option value="${a}">${a}</option>`).join('');
+  document.getElementById('export-modal').style.display='flex';
+}
+function doExportCSV(){
+  const addrFilter=document.getElementById('exp-addr').value;
+  const doPayment=document.getElementById('exp-payment').checked;
+  const doTenant=document.getElementById('exp-tenant').checked;
+  const doLease=document.getElementById('exp-lease').checked;
+  const k=monthKey();
+  const filtered=getVisibleRooms().filter(r=>addrFilter==='all'||(r.addr||'未分類')===addrFilter);
+  const headers=['地址','房間','租客'];
+  if(doTenant) headers.push('電話','緊急聯絡電話');
+  if(doLease) headers.push('入住日期','退租日期','押金');
+  if(doPayment) headers.push('月租金','付款狀態','付款時間','收款方式');
+  const rows=[headers];
+  filtered.forEach(r=>{
+    const pay=getPayment(r.id);
+    const s=pay.status||'unpaid';
+    const row=[r.addr||'未分類',r.name,r.tenant||''];
+    if(doTenant){ row.push(r.phone||''); row.push(r.emergency||''); }
+    if(doLease){ row.push(r.checkin||''); row.push(r.checkout||''); row.push(r.deposit||0); }
+    if(doPayment){ row.push(r.rent); row.push(s==='paid'?'已付款':s==='partial'?'部分付款':'未付款'); row.push(pay.paidAt?formatDT(pay.paidAt):''); row.push(pay.method==='manual'?'手動確認':'銀行到帳'); }
+    rows.push(row);
+  });
+  const addrLabel=addrFilter==='all'?'全部':addrFilter;
+  const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`好管理_${addrLabel}_${k}.csv`; a.click();
+  closeModal('export-modal'); toast('CSV 匯出完成');
+}
+
+function exportCSV(){ openExportModal(); }
+
+// ── 點交管理 ──
+function renderHandover(){
+  const list = document.getElementById('handover-list'); if(!list) return;
+  const empty = document.getElementById('handover-empty'); if(!empty) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  // 顯示已退租或45天內到期的房間
+  const handoverRooms = getVisibleRooms().filter(r=>{
+    if(!r.checkout||!r.tenant) return false;
+    const d = parseLocalDate(r.checkout);
+    const diff = Math.ceil((d-today)/(1000*60*60*24));
+    return diff <= 45;
+  }).sort((a,b)=>parseLocalDate(a.checkout)-parseLocalDate(b.checkout));
+
+  // update badge
+  const badge = document.getElementById('handover-badge');
+  if(badge){ badge.textContent=handoverRooms.length; badge.style.display=handoverRooms.length?'':'none'; }
+
+  if(!handoverRooms.length){
+    empty.style.display=''; list.innerHTML=''; return;
+  }
+  empty.style.display='none';
+  list.innerHTML = handoverRooms.map(r=>{
+    const d = parseLocalDate(r.checkout);
+    const diff = Math.ceil((d-today)/(1000*60*60*24));
+    const diffLabel = diff<0?`已退租 ${Math.abs(diff)} 天`:diff===0?'今日到期':`${diff} 天後到期`;
+    const diffColor = diff<0?'var(--text3)':diff<=7?'var(--red-dk)':'var(--amber-dk)';
+    const hd = r.handoverData||{};
+    const dep = r.depositData||{};
+    return `<div class="handover-card">
+      <div class="handover-card-top">
+        <div>
+          <div class="handover-room-name">🔑 ${r.name} <span style="font-size:12px;font-weight:400;color:var(--text2);">— ${r.tenant}</span></div>
+          <div class="handover-room-sub">
+            📍 ${r.addr||'未分類'} ・ 退租日：${r.checkout} ・ <span style="color:${diffColor};font-weight:500;">${diffLabel}</span>
+            ${r.deposit?` ・ 押金：$${r.deposit.toLocaleString()}`:''}
+          </div>
+        </div>
+        <div class="handover-actions">
+          <button class="btn btn-sm ${hd.done?'btn-success':''}" onclick="toggleHandoverSection('${r.id}','handover-sec')">
+            ${hd.done?'✓ 已點交':'點交'}
+          </button>
+          <button class="btn btn-sm ${dep.returned?'btn-success':''}" onclick="toggleHandoverSection('${r.id}','deposit-sec')">
+            ${dep.returned?'✓ 已退押金':'押金'}
+          </button>
+        </div>
+      </div>
+
+      <!-- 點交區塊 -->
+      <div id="handover-sec-${r.id}" style="display:none;">
+        <div class="handover-section">
+          <div class="handover-section-title">點交狀況</div>
+          ${hd.done?`<div class="handover-done-box">✓ 已完成點交 · ${hd.doneAt||''}<br>點交人員：${hd.staff||'—'}<br>狀況：${hd.note||'—'}</div>`:`
+          <textarea class="handover-textarea" id="ho-note-${r.id}" placeholder="填寫點交狀況，例如：冷氣正常、熱水器正常、有一處牆面刮傷...">${hd.note||''}</textarea>
+          <div class="handover-field-row">
+            <span class="handover-field-label">點交人員</span>
+            <input class="handover-field-input" id="ho-staff-${r.id}" type="text" value="${hd.staff||currentUser?.username||currentUser?.name||''}" readonly style="background:var(--surface2);color:var(--text2);cursor:not-allowed;">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+            <button class="btn btn-sm" onclick="toggleHandoverSection('${r.id}','handover-sec')">取消</button>
+            <button class="btn btn-sm btn-primary" onclick="saveHandover('${r.id}')">確認點交</button>
+          </div>`}
+        </div>
+      </div>
+
+      <!-- 押金區塊 -->
+      <div id="deposit-sec-${r.id}" style="display:none;">
+        <div class="handover-section">
+          <div class="handover-section-title">押金退還</div>
+          ${dep.returned||dep.note?`<div class="handover-done-box">
+            ${dep.returned?`✓ 已退還押金 $${(dep.amount||r.deposit||0).toLocaleString()}`:'📝 押金備註'}
+            · ${dep.doneAt||''}
+            <br>退押人員：${dep.staff||'—'}
+            ${dep.returnDate?`<br>退款日期：${dep.returnDate}`:''}
+            ${dep.note?`<br>備註：${dep.note}`:''}
+          </div>`:`
+          <textarea class="handover-textarea" id="dep-note-${r.id}" placeholder="填寫備註，例如：扣除修繕費用 $2,000、牆面修復費 $500...">${dep.note||''}</textarea>
+          <div class="handover-field-row" style="margin-top:8px;">
+            <span class="handover-field-label">退還金額</span>
+            <input class="handover-field-input" id="dep-amount-${r.id}" type="number" value="${r.deposit||0}" placeholder="退還押金金額">
+          </div>
+          <div class="handover-field-row">
+            <span class="handover-field-label">退款日期</span>
+            <input class="handover-field-input" id="dep-date-${r.id}" type="date" value="${dep.returnDate||new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="handover-field-row">
+            <span class="handover-field-label">退押人員</span>
+            <input class="handover-field-input" id="dep-staff-${r.id}" type="text" value="${dep.staff||currentUser?.username||currentUser?.name||''}" readonly style="background:var(--surface2);color:var(--text2);cursor:not-allowed;">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+            <button class="btn btn-sm" onclick="toggleHandoverSection('${r.id}','deposit-sec')">取消</button>
+            <button class="btn btn-sm btn-primary" onclick="saveDeposit('${r.id}')">確認退押</button>
+          </div>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleHandoverSection(roomId, secId){
+  const el = document.getElementById(`${secId}-${roomId}`);
+  if(!el) return;
+  const isOpen = el.style.display !== 'none';
+  // 關掉所有
+  ['handover-sec','deposit-sec'].forEach(s=>{
+    const e=document.getElementById(`${s}-${roomId}`); if(e) e.style.display='none';
+  });
+  if(!isOpen) el.style.display='';
+}
+
+function setDepositOpt(roomId, opt){
+  const noteArea = document.getElementById(`dep-note-area-${roomId}`);
+  const returnInput = document.getElementById(`dep-return-input-${roomId}`);
+  const optNote = document.getElementById(`dep-opt-note-${roomId}`);
+  const optReturn = document.getElementById(`dep-opt-return-${roomId}`);
+  if(opt==='note'){
+    if(noteArea) noteArea.style.display='';
+    if(returnInput) returnInput.style.display='none';
+    if(optNote) optNote.classList.add('active');
+    if(optReturn) optReturn.classList.remove('active');
+  } else {
+    if(noteArea) noteArea.style.display='none';
+    if(returnInput) returnInput.style.display='';
+    if(optNote) optNote.classList.remove('active');
+    if(optReturn) optReturn.classList.add('active');
+  }
+}
+
+function saveHandover(roomId){
+  const r = rooms.find(x=>x.id===roomId); if(!r) return;
+  const note = (document.getElementById(`ho-note-${roomId}`)||{}).value?.trim()||'';
+  const staff = (document.getElementById(`ho-staff-${roomId}`)||{}).value?.trim()||currentUser?.name||'';
+  r.handoverData = { done:true, note, staff, doneAt: new Date().toLocaleDateString('zh-TW') };
+  save(); renderHandover(); toast(`${r.name} 點交完成`);
+}
+
+function saveDeposit(roomId){
+  const r = rooms.find(x=>x.id===roomId); if(!r) return;
+  const note = (document.getElementById(`dep-note-${roomId}`)||{}).value?.trim()||'';
+  const staff = (document.getElementById(`dep-staff-${roomId}`)||{}).value?.trim()||currentUser?.username||currentUser?.name||'';
+  const amount = parseInt((document.getElementById(`dep-amount-${roomId}`)||{}).value)||0;
+  const returnDate = (document.getElementById(`dep-date-${roomId}`)||{}).value||'';
+  r.depositData = { returned:true, amount, note, returnDate, staff, doneAt:new Date().toLocaleDateString('zh-TW') };
+
+  // 歸檔租客資料
+  const archiveEntry = {
+    id: 'arc'+Date.now(),
+    roomId: r.id,
+    roomName: r.name,
+    addr: r.addr||'',
+    tenant: r.tenant||'',
+    phone: r.phone||'',
+    emergency: r.emergency||'',
+    checkin: r.checkin||'',
+    checkout: r.checkout||'',
+    deposit: r.deposit||0,
+    depositReturned: amount,
+    depositReturnDate: returnDate,
+    depositNote: note,
+    depositStaff: staff,
+    handoverNote: r.handoverData?.note||'',
+    handoverStaff: r.handoverData?.staff||'',
+    note: r.note||'',
+    archivedAt: new Date().toLocaleDateString('zh-TW')
+  };
+  if(!tenantArchive) tenantArchive=[];
+  tenantArchive.push(archiveEntry);
+
+  // 清空房間租客資料 → 變空房
+  r.tenant=''; r.phone=''; r.emergency=''; r.checkin=''; r.checkout='';
+  r.deposit=0; r.note=''; r.handoverData=null; r.depositData=null; r.repairs=[];
+
+  save(); renderAll(); toast(`押金 $${amount.toLocaleString()} 已記錄，房間已設為空房`);
+}
+
+
+// ── 歷史租客 ──
+function renderArchive(){
+  const tbody=document.getElementById('archive-tbody'); if(!tbody) return;
+  if(!isAdmin()){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:1.5rem">僅 Admin 可查看</td></tr>'; return; }
+  const search=(document.getElementById('archive-search')||{value:''}).value.toLowerCase();
+  const list=(tenantArchive||[]).filter(a=>
+    (a.roomName||'').toLowerCase().includes(search)||
+    (a.tenant||'').toLowerCase().includes(search)||
+    (a.addr||'').toLowerCase().includes(search)
+  ).sort((a,b)=>new Date(b.archivedAt)-new Date(a.archivedAt));
+  if(!list.length){
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:1.5rem">尚無歷史租客資料</td></tr>';
+    return;
+  }
+  tbody.innerHTML=list.map((a,i)=>`<tr>
+    <td><b>${a.roomName}</b></td>
+    <td style="font-size:12px;color:var(--text2)">${a.addr||'—'}</td>
+    <td>${a.tenant||'—'}</td>
+    <td>${a.checkin||'—'}</td>
+    <td>${a.checkout||'—'}</td>
+    <td class="mono">$${(a.deposit||0).toLocaleString()}</td>
+    <td style="font-size:12px;color:var(--text3)">${a.archivedAt||'—'}</td>
+    <td><button class="btn btn-sm" onclick="showArchiveDetail(${i})">查看詳情</button></td>
+  </tr>`).join('');
+  // 儲存過濾後的清單供詳情使用
+  window._archiveList = list;
+}
+
+function showArchiveDetail(idx){
+  const a = (window._archiveList||[])[idx]; if(!a) return;
+  document.getElementById('archive-detail-title').textContent = `${a.roomName} — ${a.tenant||'未知租客'}`;
+  document.getElementById('archive-detail-content').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">租客姓名</div>
+          <div style="font-size:14px;font-weight:600;">${a.tenant||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">租客電話</div>
+          <div style="font-size:14px;">${a.phone||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">緊急聯絡電話</div>
+          <div style="font-size:14px;color:var(--red-dk);">${a.emergency||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">地址</div>
+          <div style="font-size:14px;">${a.addr||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">入住日期</div>
+          <div style="font-size:14px;">${a.checkin||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">退租日期</div>
+          <div style="font-size:14px;">${a.checkout||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">押金</div>
+          <div style="font-size:14px;font-family:'DM Mono',monospace;">$${(a.deposit||0).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">實際退還押金</div>
+          <div style="font-size:14px;font-weight:600;color:var(--green-dk);font-family:'DM Mono',monospace;">$${(a.depositReturned||0).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">退款日期</div>
+          <div style="font-size:14px;">${a.depositReturnDate||'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">退押人員</div>
+          <div style="font-size:14px;">${a.depositStaff||'—'}</div>
+        </div>
+      </div>
+      ${a.depositNote?`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">押金備註</div>
+        <div style="font-size:13px;">${a.depositNote}</div>
+      </div>`:''}
+      <div style="background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--green-dk);margin-bottom:4px;">點交狀況</div>
+        <div style="font-size:13px;color:var(--green-dk);">${a.handoverNote||'（點交時未填寫狀況）'}</div>
+        ${a.handoverStaff?`<div style="font-size:11px;color:var(--text3);margin-top:4px;">點交人員：${a.handoverStaff}</div>`:''}
+      </div>
+      ${a.note?`<div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">原始備註</div>
+        <div style="font-size:13px;color:var(--text2);">${a.note}</div>
+      </div>`:''}
+    </div>`;
+  document.getElementById('archive-detail-modal').style.display='flex';
+}
+
+// ── 管理人報表 ──
+let activeMgrAddr='all';
+let mgrExpenses={};   // { month: { addrKey: { item: amount } } }
+let customExpenses={}; // { month: { addrKey: [{label,amount}] } }
+
+const DEFAULT_EXPENSE_ITEMS=[
+  {id:'electricity',label:'電費'},
+  {id:'water',label:'水費'},
+  {id:'internet',label:'網路費'},
+  {id:'bulb',label:'燈泡'},
+  {id:'paint',label:'油漆'},
+  {id:'repair',label:'修繕'},
+  {id:'rental_service',label:'代租服務費'},
+];
+
+function mgrExpKey(){ return `${monthKey()}__${activeMgrAddr}`; }
+
+function getExpenseData(){
+  const k=mgrExpKey();
+  if(!mgrExpenses[k]) mgrExpenses[k]={};
+  return mgrExpenses[k];
+}
+function getCustomData(){
+  const k=mgrExpKey();
+  if(!customExpenses[k]) customExpenses[k]=[];
+  return customExpenses[k];
+}
+function saveMgrExpenses(){
+  try{
+    localStorage.setItem('rg_mgrexp',JSON.stringify(mgrExpenses));
+    localStorage.setItem('rg_customexp',JSON.stringify(customExpenses));
+  }catch(e){}
+}
+function loadMgrExpenses(){
+  try{
+    const e=localStorage.getItem('rg_mgrexp'); if(e) mgrExpenses=JSON.parse(e);
+    const c=localStorage.getItem('rg_customexp'); if(c) customExpenses=JSON.parse(c);
+  }catch(e){}
+}
+
+function renderMgrRptAddrBar(){
+  const bar=document.getElementById('mgrrpt-addr-bar'); if(!bar) return;
+  const addrNames=isOwner()?getAddrNames():getVisibleAddrNames();
+  const visR=getVisibleRooms();
+  const counts={all:visR.length};
+  addrNames.forEach(a=>{counts[a]=visR.filter(r=>(r.addr||'未分類')===a).length;});
+  bar.innerHTML=`<button class="addr-pill${activeMgrAddr==='all'?' active':''}" onclick="setMgrAddr('all')">全部<span class="addr-badge">${visR.length}</span></button>`+
+    addrNames.filter(a=>counts[a]>0).map(a=>`<button class="addr-pill${activeMgrAddr===a?' active':''}" onclick="setMgrAddr('${a}')">${a}<span class="addr-badge">${counts[a]}</span></button>`).join('');
+}
+
+function setMgrAddr(a){ activeMgrAddr=a; renderMgrRpt(); }
+
+function renderMgrRpt(){
+  renderMgrRptAddrBar();
+  const visR=getVisibleRooms();
+  const filtered=activeMgrAddr==='all'?visR:visR.filter(r=>(r.addr||'未分類')===activeMgrAddr);
+  const vacant=filtered.filter(r=>!r.tenant||!r.tenant.trim());
+  const rented=filtered.filter(r=>r.tenant&&r.tenant.trim());
+  const paid=rented.filter(r=>getStatus(r.id)==='paid');
+  const [my2,mm2]=[curYear,curMonth+1];
+  const elecPrepayMgr=filtered.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+    const done=(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done') return false;
+      const raw=t.doneAt||t.date||'';
+      const d=raw?new Date(raw):null;
+      if(!d||isNaN(d)) return false;
+      return d.getFullYear()===my2&&d.getMonth()+1===mm2;
+    });
+    return s+done.reduce((ss,t)=>ss+t.amount,0);
+  },0);
+  const totalActual=paid.reduce((s,r)=>s+getActualRent(r),0)+elecPrepayMgr;
+  const totalExpected=rented.reduce((s,r)=>s+getActualRent(r),0);
+
+  // 摘要卡片
+  const sum=document.getElementById('mgrrpt-summary');
+  if(sum) sum.innerHTML=`
+    <div class="mgrrpt-card"><div class="mgrrpt-card-label">總房間數</div><div class="mgrrpt-card-val">${filtered.length} 間</div></div>
+    <div class="mgrrpt-card"><div class="mgrrpt-card-label">出租中</div><div class="mgrrpt-card-val green">${rented.length} 間</div></div>
+    <div class="mgrrpt-card"><div class="mgrrpt-card-label">空房</div><div class="mgrrpt-card-val amber">${vacant.length} 間</div></div>
+    <div class="mgrrpt-card"><div class="mgrrpt-card-label">已收租金</div><div class="mgrrpt-card-val green">$${(totalActual-elecPrepayMgr).toLocaleString()}</div></div>
+    ${elecPrepayMgr>0?`<div class="mgrrpt-card" style="grid-column:span 2;"><div class="mgrrpt-card-label">已收儲值電費（本月）</div><div class="mgrrpt-card-val amber">$${elecPrepayMgr.toLocaleString()}</div></div>`:''}`;
+
+  // 支出欄
+  renderExpenseGrid();
+
+  // 房間列表
+  const tbody=document.getElementById('mgrrpt-room-tbody'); if(!tbody) return;
+  if(!filtered.length){ tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">此地址無房間</td></tr>'; return; }
+  tbody.innerHTML=filtered.map(r=>{
+    const isVacant=!r.tenant||!r.tenant.trim();
+    const s=getStatus(r.id);
+    const bc=isVacant?'b-vacant':s==='paid'?'b-paid':s==='partial'?'b-partial':'b-unpaid';
+    const bt=isVacant?'空房':s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
+    const isPrepayR=r.elecType==='prepay';
+    // 儲值電費：本月已處理的儲值總額
+    const elecPrepayR=isPrepayR?(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done') return false;
+      const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
+      return d&&!isNaN(d)&&d.getFullYear()===my2&&d.getMonth()+1===mm2;
+    }).reduce((s,t)=>s+t.amount,0):0;
+    const elecMonthlyR=isPrepayR?0:(r.elec||0);
+    const elecDisplayR=isPrepayR?elecPrepayR:elecMonthlyR;
+    const expectedR=isVacant?0:(r.rent||0)+elecMonthlyR;
+    return `<tr style="${isVacant?'opacity:.6':''}">
+      <td><b>${r.name}</b></td>
+      <td>${r.tenant||'—'}</td>
+      <td class="mono">${isVacant?'—':'$'+(r.rent||0).toLocaleString()}</td>
+      <td class="mono" style="color:var(--amber-dk)">${elecDisplayR>0&&!isVacant?(isPrepayR?'⚡$'+elecPrepayR.toLocaleString():'$'+elecMonthlyR.toLocaleString()):'—'}</td>
+      <td class="mono">${isVacant?'—':'$'+expectedR.toLocaleString()}</td>
+      <td><span class="badge ${bc}">${bt}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderExpenseGrid(){
+  const expData=getExpenseData();
+  const customData=getCustomData();
+  const grid=document.getElementById('expense-grid'); if(!grid) return;
+
+  grid.innerHTML=DEFAULT_EXPENSE_ITEMS.map(item=>{
+    const checked=item.id in expData;
+    const amt=expData[item.id]||0;
+    return `<div class="expense-item${checked?' active':''}" id="exp-wrap-${item.id}">
+      <input type="checkbox" id="exp-cb-${item.id}" ${checked?'checked':''} onchange="toggleExpense('${item.id}',this.checked)">
+      <span class="expense-item-label">${item.label}</span>
+      <input class="expense-item-input" type="number" id="exp-amt-${item.id}" value="${amt||''}" placeholder="0"
+        ${checked?'':'disabled style="opacity:.4"'}
+        oninput="updateExpenseAmt('${item.id}',this.value)">
+    </div>`;
+  }).join('');
+
+  // 自訂項目
+  const customEl=document.getElementById('custom-expenses'); if(!customEl) return;
+  customEl.innerHTML=customData.map((c,i)=>`
+    <div class="expense-custom-row">
+      <input class="expense-custom-input" type="text" value="${c.label}" placeholder="項目名稱"
+        oninput="updateCustomLabel(${i},this.value)">
+      <input class="expense-item-input" type="number" value="${c.amount||''}" placeholder="金額"
+        oninput="updateCustomAmt(${i},this.value)">
+      <button class="btn btn-sm btn-danger" onclick="removeCustomExpense(${i})">✕</button>
+    </div>`).join('');
+
+  calcIncome();
+}
+
+function toggleExpense(id, checked){
+  const expData=getExpenseData();
+  const wrap=document.getElementById(`exp-wrap-${id}`);
+  const input=document.getElementById(`exp-amt-${id}`);
+  if(checked){
+    expData[id]=parseInt(input?.value)||0;
+    wrap?.classList.add('active');
+    if(input){ input.disabled=false; input.style.opacity='1'; input.focus(); }
+  } else {
+    delete expData[id];
+    wrap?.classList.remove('active');
+    if(input){ input.disabled=true; input.style.opacity='.4'; input.value=''; }
+  }
+  saveMgrExpenses(); calcIncome();
+}
+
+function updateExpenseAmt(id, val){
+  const expData=getExpenseData();
+  expData[id]=parseInt(val)||0;
+  saveMgrExpenses(); calcIncome();
+}
+
+function addCustomExpense(){
+  const customData=getCustomData();
+  customData.push({label:'',amount:0});
+  saveMgrExpenses(); renderExpenseGrid();
+}
+
+function updateCustomLabel(i, val){
+  const customData=getCustomData();
+  if(customData[i]) customData[i].label=val;
+  saveMgrExpenses(); calcIncome();
+}
+
+function updateCustomAmt(i, val){
+  const customData=getCustomData();
+  if(customData[i]) customData[i].amount=parseInt(val)||0;
+  saveMgrExpenses(); calcIncome();
+}
+
+function removeCustomExpense(i){
+  const k=mgrExpKey();
+  if(customExpenses[k]) customExpenses[k].splice(i,1);
+  saveMgrExpenses(); renderExpenseGrid();
+}
+
+function calcIncome(){
+  const visR=getVisibleRooms();
+  const filtered=activeMgrAddr==='all'?visR:visR.filter(r=>(r.addr||'未分類')===activeMgrAddr);
+  const rented=filtered.filter(r=>r.tenant&&r.tenant.trim());
+  const paid=rented.filter(r=>getStatus(r.id)==='paid');
+
+  // 月結電費含電費，儲值電費分開顯示
+  const totalRentOnly=paid.reduce((s,r)=>s+(r.rent||0),0);
+  const totalElecMonthly=paid.filter(r=>r.elecType==='monthly').reduce((s,r)=>s+(r.elec||0),0);
+  // 儲值電費：計算已處理的儲值金額（當月範圍）
+  const mk=mgrExpKey().split('__')[0]; // YYYY-MM
+  const [my,mm]=mk.split('-').map(Number);
+  const totalElecPrepay=filtered.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+    const done=(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done') return false;
+      const raw=t.doneAt||t.date||'';
+      const d=raw?new Date(raw):null;
+      if(!d||isNaN(d)) return false;
+      return d.getFullYear()===my&&d.getMonth()+1===mm;
+    });
+    return s+done.reduce((ss,t)=>ss+t.amount,0);
+  },0);
+  const totalActual=paid.reduce((s,r)=>s+getActualRent(r),0)+totalElecPrepay;
+  const expData=getExpenseData();
+  const customData=getCustomData();
+
+  const expItems=[
+    ...DEFAULT_EXPENSE_ITEMS.filter(item=>item.id in expData).map(item=>({label:item.label,amount:expData[item.id]||0})),
+    ...customData.filter(c=>c.label&&c.amount>0)
+  ];
+  const totalExp=expItems.reduce((s,e)=>s+e.amount,0);
+  const netIncome=totalActual-totalExp;
+
+  const el=document.getElementById('income-result-rows'); if(!el) return;
+  el.innerHTML=`
+    <div class="income-row"><span class="income-row-label">已收租金</span><span class="income-row-val" style="color:var(--green-dk)">+$${totalRentOnly.toLocaleString()}</span></div>
+    ${totalElecMonthly>0?`<div class="income-row"><span class="income-row-label">　已收月結電費</span><span class="income-row-val" style="color:var(--amber-dk)">+$${totalElecMonthly.toLocaleString()}</span></div>`:''}
+    ${totalElecPrepay>0?`<div class="income-row"><span class="income-row-label">　已收儲值電費</span><span class="income-row-val" style="color:var(--amber-dk)">+$${totalElecPrepay.toLocaleString()}</span></div>`:''}
+    ${expItems.map(e=>`<div class="income-row"><span class="income-row-label">　${e.label}</span><span class="income-row-val" style="color:var(--red-dk)">-$${e.amount.toLocaleString()}</span></div>`).join('')}
+    ${totalExp>0?`<div class="income-row"><span class="income-row-label">支出合計</span><span class="income-row-val" style="color:var(--red-dk)">-$${totalExp.toLocaleString()}</span></div>`:''}
+    <div class="income-row" style="border-top:2px solid var(--border);margin-top:4px;">
+      <span style="font-size:14px;font-weight:600;">實際月收入</span>
+      <span class="income-total" style="color:${netIncome>=0?'var(--green-dk)':'var(--red-dk)'}">$${netIncome.toLocaleString()}</span>
+    </div>`;
+}
+
+// ── 押金報表 TOAST ──
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+function switchGw(mode){
+  const isEcpay = mode==='ecpay';
+  document.getElementById('panel-ecpay').style.display = isEcpay ? '' : 'none';
+  document.getElementById('panel-bank').style.display = isEcpay ? 'none' : '';
+  document.getElementById('mode-ecpay').style.border = isEcpay ? '2px solid var(--text)' : '1px solid var(--border)';
+  document.getElementById('mode-bank').style.border = isEcpay ? '1px solid var(--border)' : '2px solid var(--text)';
+  document.querySelector('#mode-ecpay .badge').style.display = isEcpay ? '' : 'none';
+  localStorage.setItem('rg_gw_mode', mode);
+}
+
+function selectBank(el, code){
+  document.querySelectorAll('.bank-option').forEach(b=>{
+    b.style.border='1px solid var(--border)';
+    b.style.background='';
+  });
+  el.style.border='2px solid var(--text)';
+  el.style.background='var(--surface2)';
+  document.getElementById('bank-fields').style.display='';
+  document.getElementById('bank-note').style.display='none';
+  const codes={esun:'809',ctbc:'822',taishin:'812',cathay:'013',firstbank:'007',other:''};
+  document.getElementById('bank-code').value=codes[code]||'';
+}
+
+function saveBankCfg(){
+  const cfg={
+    mode:'bank',
+    code:document.getElementById('bank-code').value.trim(),
+    endpoint:document.getElementById('bank-endpoint').value.trim(),
+    apikey:document.getElementById('bank-apikey').value.trim(),
+    secret:document.getElementById('bank-secret').value.trim(),
+    mainAcc:document.getElementById('bank-main-acc').value.trim(),
+  };
+  localStorage.setItem('rg_bank_cfg',JSON.stringify(cfg));
+  toast('銀行設定已儲存');
+}
+
+function testBankWebhook(){ toast('測試連線中... 請確認銀行 API 端點與金鑰正確'); }
+function copyBankWebhook(){
+  navigator.clipboard.writeText('https://your-app.vercel.app/api/bank-webhook').catch(()=>{});
+  toast('Webhook 網址已複製');
+}
+
+// 初始化
+load();
+loadMgrExpenses();
+if(!rooms.length){
+  rooms=[
+    {id:'r1',name:'101室',tenant:'陳小明',phone:'0912-111-001',rent:8000,acc:'8090010012341',checkin:'2024-01-01',deposit:16000,note:'',addr:'台中北屯區',elecType:'prepay',elecAcc:'8090010099901',elecBalance:500,elecPrice:4},
+    {id:'r2',name:'102室',tenant:'林美華',phone:'0912-111-002',rent:8500,acc:'8090010012342',checkin:'2024-02-01',deposit:17000,note:'',addr:'台中北屯區',elecType:'prepay',elecAcc:'8090010099902',elecBalance:0,elecPrice:4},
+    {id:'r3',name:'201室',tenant:'王大偉',phone:'0912-111-003',rent:9000,acc:'8090010012343',checkin:'2023-06-01',deposit:18000,note:'',addr:'台中北屯區',elecType:'monthly',elec:1200},
+    {id:'r4',name:'202室',tenant:'張淑芬',phone:'0912-111-004',rent:8000,acc:'8090010012344',checkin:'2024-03-01',deposit:16000,note:'',addr:'台中西區',elecType:'prepay',elecAcc:'8090010099904',elecBalance:1200,elecPrice:4},
+    {id:'r5',name:'301室',tenant:'李建國',phone:'0912-111-005',rent:10000,acc:'8090010012345',checkin:'2023-09-01',deposit:20000,note:'長期租客',addr:'台中西區',elecType:'monthly',elec:1800},
+    {id:'r6',name:'302室',tenant:'吳雅婷',phone:'0912-111-006',rent:8500,acc:'8090010012346',checkin:'2024-04-01',deposit:17000,note:'',addr:'台中西區',elecType:'prepay',elecAcc:'8090010099906',elecBalance:300,elecPrice:4},
+    {id:'r7',name:'401室',tenant:'劉志強',phone:'0912-111-007',rent:9500,acc:'8090010012347',checkin:'2024-01-15',deposit:19000,note:'',addr:'台中南區',elecType:'prepay',elecAcc:'8090010099907',elecBalance:0,elecPrice:4},
+    {id:'r8',name:'402室',tenant:'黃秀珍',phone:'0912-111-008',rent:8000,acc:'8090010012348',checkin:'2023-12-01',deposit:16000,note:'',addr:'台中南區',elecType:'monthly',elec:900},
+  ];
+  addresses=['台中北屯區','台中西區','台中南區'];
+  const k=`${curYear}-${String(curMonth+1).padStart(2,'0')}`;
+  payments[k]={
+    r1:{status:'paid',paidAt:'2025-04-03T09:12:00.000Z',method:'manual'},
+    r2:{status:'paid',paidAt:'2025-04-02T14:30:00.000Z',method:'manual'},
+    r3:{status:'paid',paidAt:'2025-04-01T10:05:00.000Z',method:'manual'},
+    r5:{status:'partial',paidAt:'2025-04-05T11:20:00.000Z',method:'manual'},
+    r7:{status:'paid',paidAt:'2025-04-04T16:45:00.000Z',method:'manual'},
+  };
+  save();
+}
+// 金流模式初始化（放在 load 之後避免 DOM 錯誤）
+try{ const savedGwMode=localStorage.getItem('rg_gw_mode')||'ecpay'; if(savedGwMode==='bank') switchGw('bank'); }catch(e){}
+
+function checkExpiryNotices(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  // 只顯示該管理人負責的房間
+  const expiring=getVisibleRooms().filter(r=>{
+    if(!r.checkout||!r.tenant) return false;
+    const d=parseLocalDate(r.checkout);
+    const diff=Math.ceil((d-today)/(1000*60*60*24));
+    return diff>=0&&diff<=45;
+  });
+  const banner=document.getElementById('expiry-banner');
+  const content=document.getElementById('expiry-content');
+  if(!banner||!content) return;
+  if(!expiring.length){ banner.style.display='none'; return; }
+  content.innerHTML='<b>合約即將到期提醒</b>　'+expiring.map(r=>{
+    const d=parseLocalDate(r.checkout);
+    const diff=Math.ceil((d-today)/(1000*60*60*24));
+    return `<span style="display:inline-block;background:rgba(0,0,0,.08);border-radius:6px;padding:2px 10px;margin:2px 4px;">${r.name}（${r.tenant}）剩 <b>${diff}</b> 天 · ${r.checkout}</span>`;
+  }).join('');
+  banner.style.display='';
+}
+
+
+</script>
+</body>
+</html>
