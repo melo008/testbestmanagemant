@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>好管理 測試版 · 房租收款系統</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #F7F6F2;
@@ -301,10 +302,6 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
 .deposit-opt-title{font-size:13px;font-weight:600;}
 .deposit-opt-sub{font-size:11px;color:var(--text2);margin-top:2px;}
 
-
-/* 測試版橫幅 */
-.test-banner{position:fixed;bottom:60px;right:12px;background:#EF4444;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:9999;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-@media(min-width:769px){.test-banner{bottom:12px;}}
 /* ── 待修逾期紅字橫幅 ── */
 .overdue-banner{display:none;position:fixed;top:0;left:230px;right:0;z-index:51;background:#FEE2E2;border-bottom:2px solid var(--red);padding:9px 20px;font-size:13px;color:var(--red-dk);}
 .overdue-banner.show{display:block;}
@@ -388,6 +385,9 @@ tbody tr:hover{background:var(--surface2);}
 .setting-row{padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:13px;}
 .setting-row:last-child{border-bottom:none;}
 .setting-row-lbl{color:var(--text2);font-size:12px;margin-top:2px;}
+
+.test-banner{position:fixed;bottom:60px;right:12px;background:#EF4444;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:9999;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+@media(min-width:769px){.test-banner{bottom:12px;}}
 </style>
 </head>
 <body>
@@ -397,8 +397,8 @@ tbody tr:hover{background:var(--surface2);}
   <div class="auth-card">
     <div class="auth-logo">
       <div class="mark">🏢</div>
-      <h1>好管理 測試版</h1>
-      <p>房租收款管理系統（測試版）</p>
+      <h1>好管理</h1>
+      <p>房租收款管理系統</p>
     </div>
     <div class="auth-err" id="auth-err">帳號或密碼錯誤，請再試一次</div>
     <div class="form-field">
@@ -418,7 +418,7 @@ tbody tr:hover{background:var(--surface2);}
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="app-name">🏢 好管理 測試版</div>
-      <div class="app-sub">房租收款管理系統（測試版）</div>
+      <div class="app-sub">房租收款管理系統</div>
     </div>
     <div class="sidebar-user">
       <div class="user-avatar" id="nav-avatar" style="background:#E6F1FB;color:#185FA5;">A</div>
@@ -1168,42 +1168,189 @@ function setStatus(id,s){
 }
 
 // ── PERSIST ──
-function save(){
+// ── Supabase 初始化 ──
+const SUPA_URL = 'https://fuvfvfmprxnhwxkexmtr.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1dmZ2Zm1wcnhuaHd4a2V4bXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjYxMTMsImV4cCI6MjA5MjM0MjExM30.ng7GT-watoOSlNhUTsGjloYvDdeKQsvZVLzHipJk9FY';
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── 資料同步函數 ──
+async function save(){
   try{
-    localStorage.setItem('rg_rooms',JSON.stringify(rooms));
-    localStorage.setItem('rg_payments',JSON.stringify(payments));
-    localStorage.setItem('rg_managers',JSON.stringify(managers));
-    localStorage.setItem('rg_addresses',JSON.stringify(addresses));
-    localStorage.setItem('rg_archive',JSON.stringify(tenantArchive));
-  }catch(e){}
-}
-function load(){
-  try{
-    const r=localStorage.getItem('rg_rooms'); if(r) rooms=JSON.parse(r);
-    const p=localStorage.getItem('rg_payments'); if(p){
-      const raw=JSON.parse(p);
-      // migrate old string format to object format
-      Object.keys(raw).forEach(month=>{
-        Object.keys(raw[month]).forEach(rid=>{
-          if(typeof raw[month][rid]==='string'){
-            raw[month][rid]={status:raw[month][rid]};
-          }
+    // Rooms
+    if(rooms.length){
+      const roomRows = rooms.map(r=>({
+        id:r.id, name:r.name, tenant:r.tenant||null, phone:r.phone||null,
+        emergency:r.emergency||null, rent:r.rent||0, deposit:r.deposit||0,
+        checkin:r.checkin||null, checkout:r.checkout||null,
+        addr:r.addr||'未分類', acc:r.acc||null, note:r.note||null,
+        elec_type:r.elecType||'monthly', elec:r.elec||0,
+        elec_acc:r.elecAcc||null, elec_price:r.elecPrice||0,
+        elec_balance:r.elecBalance||0,
+        elec_topups:r.elecTopups||[],
+        repairs:r.repairs||[],
+        handover_data:r.handoverData||null,
+        deposit_data:r.depositData||null,
+        updated_at:new Date().toISOString()
+      }));
+      await db.from('test_rooms').upsert(roomRows);
+    }
+    // Payments
+    const payRows=[];
+    Object.keys(payments).forEach(mk=>{
+      Object.keys(payments[mk]).forEach(rid=>{
+        const p=payments[mk][rid];
+        payRows.push({
+          month_key:mk, room_id:rid,
+          status:p.status||'unpaid',
+          paid_at:p.paidAt||null,
+          method:p.method||null,
+          adjusted_amount:p.adjustedAmount??null,
+          adj_history:p.adjHistory||[],
+          elec_topup_log:p.elecTopupLog||[],
+          updated_at:new Date().toISOString()
         });
       });
-      payments=raw;
+    });
+    if(payRows.length) await db.from('test_payments').upsert(payRows,{onConflict:'month_key,room_id'});
+    // Managers
+    if(managers.length){
+      await db.from('test_managers').upsert(managers.map(m=>({
+        id:m.id, name:m.name, username:m.username, password:m.password,
+        role:m.role||'manager', suspended:m.suspended||false
+      })));
     }
-    const m=localStorage.getItem('rg_managers'); if(m) managers=JSON.parse(m);
-    const a=localStorage.getItem('rg_addresses'); if(a){
-      const raw=JSON.parse(a);
-      // migrate: old format was string[], new is [{name,managers:[]}]
-      if(raw.length>0 && typeof raw[0]==='string'){
-        addresses=raw.map(name=>({name,managers:[]}));
-      } else {
-        addresses=raw;
-      }
+    // Addresses
+    if(addresses.length){
+      await db.from('test_addresses').upsert(addresses.map(a=>({
+        name:a.name, elec_type:a.elecType||'monthly',
+        elec_acc:a.elecAcc||null, elec_price:a.elecPrice||0,
+        managers:a.managers||[]
+      })),{onConflict:'name'});
     }
-    const arc=localStorage.getItem('rg_archive'); if(arc) tenantArchive=JSON.parse(arc);
-  }catch(e){}
+    // Archive
+    if(tenantArchive.length){
+      await db.from('test_tenant_archive').upsert(tenantArchive.map(a=>({
+        id:a.id, room_id:a.roomId, room_name:a.roomName, addr:a.addr,
+        tenant:a.tenant, phone:a.phone||null, emergency:a.emergency||null,
+        checkin:a.checkin||null, checkout:a.checkout||null,
+        deposit:a.deposit||0, deposit_returned:a.depositReturned||0,
+        deposit_return_date:a.depositReturnDate||null,
+        deposit_note:a.depositNote||null, deposit_staff:a.depositStaff||null,
+        handover_note:a.handoverNote||null, handover_staff:a.handoverStaff||null,
+        note:a.note||null
+      })));
+    }
+  }catch(e){ console.error('Supabase save error:',e); toast('⚠ 儲存失敗，請檢查網路連線'); }
+}
+
+async function load(){
+  try{
+    showLoading(true);
+    // Rooms
+    const {data:rData}=await db.from('test_rooms').select('*');
+    if(rData) rooms=rData.map(r=>({
+      id:r.id, name:r.name, tenant:r.tenant||'', phone:r.phone||'',
+      emergency:r.emergency||'', rent:r.rent||0, deposit:r.deposit||0,
+      checkin:r.checkin||'', checkout:r.checkout||'',
+      addr:r.addr||'未分類', acc:r.acc||'', note:r.note||'',
+      elecType:r.elec_type||'monthly', elec:r.elec||0,
+      elecAcc:r.elec_acc||'', elecPrice:r.elec_price||0,
+      elecBalance:r.elec_balance||0,
+      elecTopups:r.elec_topups||[],
+      repairs:r.repairs||[],
+      handoverData:r.handover_data||null,
+      depositData:r.deposit_data||null
+    }));
+    // Payments
+    const {data:pData}=await db.from('test_payments').select('*');
+    if(pData){
+      payments={};
+      pData.forEach(p=>{
+        if(!payments[p.month_key]) payments[p.month_key]={};
+        payments[p.month_key][p.room_id]={
+          status:p.status||'unpaid',
+          paidAt:p.paid_at||null,
+          method:p.method||null,
+          adjustedAmount:p.adjusted_amount??null,
+          adjHistory:p.adj_history||[],
+          elecTopupLog:p.elec_topup_log||[]
+        };
+      });
+    }
+    // Managers
+    const {data:mData}=await db.from('test_managers').select('*');
+    if(mData) managers=mData.map(m=>({
+      id:m.id, name:m.name, username:m.username, password:m.password,
+      role:m.role||'manager', suspended:m.suspended||false,
+      createdAt:m.created_at?new Date(m.created_at).toLocaleDateString('zh-TW'):''
+    }));
+    // Addresses
+    const {data:aData}=await db.from('test_addresses').select('*');
+    if(aData) addresses=aData.map(a=>({
+      name:a.name, elecType:a.elec_type||'monthly',
+      elecAcc:a.elec_acc||'', elecPrice:a.elec_price||0,
+      managers:a.managers||[]
+    }));
+    // Archive
+    const {data:arcData}=await db.from('test_tenant_archive').select('*');
+    if(arcData) tenantArchive=arcData.map(a=>({
+      id:a.id, roomId:a.room_id, roomName:a.room_name, addr:a.addr,
+      tenant:a.tenant, phone:a.phone||'', emergency:a.emergency||'',
+      checkin:a.checkin||'', checkout:a.checkout||'',
+      deposit:a.deposit||0, depositReturned:a.deposit_returned||0,
+      depositReturnDate:a.deposit_return_date||'',
+      depositNote:a.deposit_note||'', depositStaff:a.deposit_staff||'',
+      handoverNote:a.handover_note||'', handoverStaff:a.handover_staff||'',
+      note:a.note||'', archivedAt:a.archived_at?new Date(a.archived_at).toLocaleDateString('zh-TW'):''
+    }));
+  }catch(e){
+    console.error('Supabase load error:',e);
+    toast('⚠ 載入失敗，請檢查網路連線');
+  } finally { showLoading(false); }
+}
+
+function showLoading(show){
+  let el=document.getElementById('loading-overlay');
+  if(!el){
+    el=document.createElement('div');
+    el.id='loading-overlay';
+    el.style.cssText='position:fixed;inset:0;background:rgba(247,246,242,.85);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:15px;color:var(--text2);';
+    el.innerHTML='<div style="text-align:center"><div style="font-size:32px;margin-bottom:8px">🔄</div>載入中...</div>';
+    document.body.appendChild(el);
+  }
+  el.style.display=show?'flex':'none';
+}
+
+// 管理人報表支出（Supabase）
+async function saveMgrExpenses(){
+  try{
+    const rows=[];
+    Object.keys(mgrExpenses).forEach(mk=>{
+      Object.keys(mgrExpenses[mk]||{}).forEach(ak=>{
+        rows.push({
+          month_key:mk, addr_key:ak,
+          expenses:mgrExpenses[mk][ak]||{},
+          custom_expenses:customExpenses[mk+':'+ak]||[],
+          updated_at:new Date().toISOString()
+        });
+      });
+    });
+    if(rows.length) await db.from('test_mgr_expenses').upsert(rows,{onConflict:'month_key,addr_key'});
+  }catch(e){ console.error('saveMgrExpenses error:',e); }
+}
+async function loadMgrExpenses(){
+  try{
+    const {data}=await db.from('test_mgr_expenses').select('*');
+    if(data){
+      mgrExpenses={};
+      customExpenses={};
+      data.forEach(row=>{
+        if(!mgrExpenses[row.month_key]) mgrExpenses[row.month_key]={};
+        mgrExpenses[row.month_key][row.addr_key]=row.expenses||{};
+        customExpenses[row.month_key+':'+row.addr_key]=row.custom_expenses||[];
+      });
+    }
+  }catch(e){ console.error('loadMgrExpenses error:',e); }
 }
 
 const DEFAULT_OWNER={id:'owner',name:'房東',username:'admin',password:'admin123',role:'owner'};
@@ -2331,13 +2478,14 @@ function deleteRoom(id){
   document.getElementById('delete-confirm-username').value='';
   document.getElementById('delete-room-modal').style.display='flex';
 }
-function confirmDeleteRoom(){
+async function confirmDeleteRoom(){
   const id=document.getElementById('delete-room-id').value;
   const input=document.getElementById('delete-confirm-username').value.trim();
   if(!input){ toast('請輸入帳號'); return; }
   if(input!==currentUser?.username){ toast('帳號不正確，請重新輸入'); return; }
   rooms=rooms.filter(r=>r.id!==id);
-  save(); closeModal('delete-room-modal'); renderAll(); toast('已刪除');
+  await db.from('test_rooms').delete().eq('id',id);
+  closeModal('delete-room-modal'); renderAll(); toast('已刪除');
 }
 function markAllPaid(){
   if(!confirm('確定將本月所有房間標記為已付款？')) return;
@@ -2498,7 +2646,7 @@ function doExportCSV(){
   });
   const addrLabel=addrFilter==='all'?'全部':addrFilter;
   const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`好管理測試版_${addrLabel}_${k}.csv`; a.click();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`好管理_${addrLabel}_${k}.csv`; a.click();
   closeModal('export-modal'); toast('CSV 匯出完成');
 }
 
@@ -2786,7 +2934,7 @@ const DEFAULT_EXPENSE_ITEMS=[
   {id:'rental_service',label:'代租服務費'},
 ];
 
-function mgrExpKey(){ return `${monthKey()}__${activeMgrAddr}`; }
+function mgrExpKey(){ return `${monthKey()}__${activeMgrAddr==='all'?'all':activeMgrAddr}`; }
 
 function getExpenseData(){
   const k=mgrExpKey();
@@ -2795,8 +2943,9 @@ function getExpenseData(){
 }
 function getCustomData(){
   const k=mgrExpKey();
-  if(!customExpenses[k]) customExpenses[k]=[];
-  return customExpenses[k];
+  const ck=k.replace('__',':');
+  if(!customExpenses[ck]) customExpenses[ck]=[];
+  return customExpenses[ck];
 }
 function saveMgrExpenses(){
   try{
@@ -3054,32 +3203,12 @@ function copyBankWebhook(){
 }
 
 // 初始化
-load();
-loadMgrExpenses();
-if(!rooms.length){
-  rooms=[
-    {id:'r1',name:'101室',tenant:'陳小明',phone:'0912-111-001',rent:8000,acc:'8090010012341',checkin:'2024-01-01',deposit:16000,note:'',addr:'台中北屯區',elecType:'prepay',elecAcc:'8090010099901',elecBalance:500,elecPrice:4},
-    {id:'r2',name:'102室',tenant:'林美華',phone:'0912-111-002',rent:8500,acc:'8090010012342',checkin:'2024-02-01',deposit:17000,note:'',addr:'台中北屯區',elecType:'prepay',elecAcc:'8090010099902',elecBalance:0,elecPrice:4},
-    {id:'r3',name:'201室',tenant:'王大偉',phone:'0912-111-003',rent:9000,acc:'8090010012343',checkin:'2023-06-01',deposit:18000,note:'',addr:'台中北屯區',elecType:'monthly',elec:1200},
-    {id:'r4',name:'202室',tenant:'張淑芬',phone:'0912-111-004',rent:8000,acc:'8090010012344',checkin:'2024-03-01',deposit:16000,note:'',addr:'台中西區',elecType:'prepay',elecAcc:'8090010099904',elecBalance:1200,elecPrice:4},
-    {id:'r5',name:'301室',tenant:'李建國',phone:'0912-111-005',rent:10000,acc:'8090010012345',checkin:'2023-09-01',deposit:20000,note:'長期租客',addr:'台中西區',elecType:'monthly',elec:1800},
-    {id:'r6',name:'302室',tenant:'吳雅婷',phone:'0912-111-006',rent:8500,acc:'8090010012346',checkin:'2024-04-01',deposit:17000,note:'',addr:'台中西區',elecType:'prepay',elecAcc:'8090010099906',elecBalance:300,elecPrice:4},
-    {id:'r7',name:'401室',tenant:'劉志強',phone:'0912-111-007',rent:9500,acc:'8090010012347',checkin:'2024-01-15',deposit:19000,note:'',addr:'台中南區',elecType:'prepay',elecAcc:'8090010099907',elecBalance:0,elecPrice:4},
-    {id:'r8',name:'402室',tenant:'黃秀珍',phone:'0912-111-008',rent:8000,acc:'8090010012348',checkin:'2023-12-01',deposit:16000,note:'',addr:'台中南區',elecType:'monthly',elec:900},
-  ];
-  addresses=['台中北屯區','台中西區','台中南區'];
-  const k=`${curYear}-${String(curMonth+1).padStart(2,'0')}`;
-  payments[k]={
-    r1:{status:'paid',paidAt:'2025-04-03T09:12:00.000Z',method:'manual'},
-    r2:{status:'paid',paidAt:'2025-04-02T14:30:00.000Z',method:'manual'},
-    r3:{status:'paid',paidAt:'2025-04-01T10:05:00.000Z',method:'manual'},
-    r5:{status:'partial',paidAt:'2025-04-05T11:20:00.000Z',method:'manual'},
-    r7:{status:'paid',paidAt:'2025-04-04T16:45:00.000Z',method:'manual'},
-  };
-  save();
-}
-// 金流模式初始化（放在 load 之後避免 DOM 錯誤）
-try{ const savedGwMode=localStorage.getItem('rg_gw_mode')||'ecpay'; if(savedGwMode==='bank') switchGw('bank'); }catch(e){}
+// 啟動
+(async()=>{
+  await load();
+  await loadMgrExpenses();
+  try{ const savedGwMode=localStorage.getItem('rg_gw_mode')||'ecpay'; if(savedGwMode==='bank') switchGw('bank'); }catch(e){}
+})();
 
 function checkExpiryNotices(){
   const today=new Date(); today.setHours(0,0,0,0);
