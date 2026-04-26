@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>繳費查詢</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:#F7F6F2;color:#1C1B18;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 4rem;}
+
+.logo{text-align:center;margin-bottom:2.5rem;margin-top:1rem;}
+.logo h1{font-size:20px;font-weight:700;letter-spacing:-.3px;}
+.logo p{font-size:12px;color:#A8A79E;margin-top:4px;}
+.test-badge{display:inline-block;background:#EF4444;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:6px;letter-spacing:.5px;}
+
+.card{background:#fff;border:1px solid #E2E0D8;border-radius:16px;padding:1.75rem;width:100%;max-width:420px;box-shadow:0 2px 20px rgba(0,0,0,.06);}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;font-weight:600;color:#6A6960;margin-bottom:5px;letter-spacing:.3px;text-transform:uppercase;}
+.field input{width:100%;padding:11px 14px;border:1.5px solid #E2E0D8;border-radius:8px;font-size:16px;font-family:inherit;color:#1C1B18;background:#F7F6F2;outline:none;transition:border-color .15s;}
+.field input:focus{border-color:#378ADD;background:#fff;}
+
+.btn-query{width:100%;padding:13px;border:none;border-radius:10px;background:#1C1B18;color:#fff;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:4px;}
+.btn-query:hover{opacity:.85;}
+.btn-query:disabled{opacity:.4;cursor:not-allowed;}
+
+.error{background:#FCEBEB;border:1px solid #E24B4A;border-radius:8px;padding:10px 14px;font-size:13px;color:#A32D2D;margin-top:14px;display:none;}
+
+/* Result */
+.result{margin-top:20px;display:none;}
+
+.result-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #E2E0D8;}
+.result-room{font-size:22px;font-weight:700;}
+.result-name{font-size:13px;color:#6A6960;margin-top:2px;}
+
+/* Status badge */
+.status-paid{display:inline-flex;align-items:center;gap:5px;background:#E1F5EE;color:#0F6E56;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;}
+.status-unpaid{display:inline-flex;align-items:center;gap:5px;background:#FCEBEB;color:#A32D2D;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;}
+.status-partial{display:inline-flex;align-items:center;gap:5px;background:#FAEEDA;color:#854F0B;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.info-item{background:#F7F6F2;border-radius:8px;padding:10px 12px;}
+.info-label{font-size:10px;color:#A8A79E;margin-bottom:3px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;}
+.info-value{font-size:14px;font-weight:600;color:#1C1B18;}
+.info-value.mono{font-family:'DM Mono',monospace;}
+
+/* Account blocks */
+.acc-block{border-radius:10px;padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden;}
+.acc-block.rent{background:#EAF1FB;border:1.5px solid #378ADD;}
+.acc-block.elec{background:#FAEEDA;border:1.5px solid #EF9F27;}
+.acc-type-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
+.acc-block.rent .acc-type-label{color:#185FA5;}
+.acc-block.elec .acc-type-label{color:#854F0B;}
+.acc-number{font-size:20px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:2px;color:#1C1B18;margin-bottom:4px;word-break:break-all;}
+.acc-amount{font-size:12px;color:#6A6960;}
+.acc-amount strong{color:#1C1B18;font-weight:700;}
+
+/* Real-time indicator */
+.realtime-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;display:inline-block;margin-right:4px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.realtime-label{font-size:11px;color:#6A6960;display:flex;align-items:center;margin-bottom:12px;}
+
+/* Warning */
+.warning{background:#FEF9EE;border:1px solid #EF9F27;border-radius:8px;padding:10px 14px;font-size:12px;color:#854F0B;margin-top:12px;line-height:1.7;}
+.warning strong{display:block;font-size:12.5px;margin-bottom:2px;}
+
+/* Paid overlay on acc block */
+.acc-paid-overlay{position:absolute;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0F6E56;backdrop-filter:blur(1px);}
+
+.divider{height:1px;background:#E2E0D8;margin:14px 0;}
+
+.footer{text-align:center;font-size:11px;color:#A8A79E;margin-top:1.5rem;}
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <h1>🏠 本月繳費查詢</h1>
+  <p>輸入您的手機號碼查詢本月繳費資訊</p>
+  <div class="test-badge">🧪 測試版</div>
+</div>
+
+<div class="card">
+  <div class="field">
+    <label>手機號碼</label>
+    <input type="tel" id="phone-input" placeholder="0912-345-678"
+      inputmode="numeric" autocomplete="tel"
+      onkeydown="if(event.key==='Enter')doQuery()">
+  </div>
+  <button class="btn-query" onclick="doQuery()" id="query-btn">查詢本月繳費</button>
+  <div class="error" id="error-msg"></div>
+
+  <div class="result" id="result">
+    <div class="realtime-label">
+      <span class="realtime-dot"></span>即時同步：匯款成功後此頁面狀態將自動更新
+    </div>
+
+    <div class="result-top">
+      <div>
+        <div class="result-room" id="r-room"></div>
+        <div class="result-name" id="r-name"></div>
+      </div>
+      <div id="r-status-badge"></div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">地址</div>
+        <div class="info-value" id="r-addr"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">月租金</div>
+        <div class="info-value mono" id="r-rent"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">電費</div>
+        <div class="info-value mono" id="r-elec"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">查詢月份</div>
+        <div class="info-value" id="r-month"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 租金帳號 -->
+    <div class="acc-block rent" id="acc-rent-block">
+      <div class="acc-type-label">本月租金匯款帳號</div>
+      <div class="acc-number" id="r-acc"></div>
+      <div class="acc-amount" id="r-acc-amount"></div>
+      <div class="acc-paid-overlay" id="acc-paid-overlay" style="display:none;">✓ 本月已付款</div>
+    </div>
+
+    <!-- 儲值電費帳號 -->
+    <div class="acc-block elec" id="acc-elec-block" style="display:none;">
+      <div class="acc-type-label">電費儲值帳號</div>
+      <div class="acc-number" id="r-elec-acc"></div>
+      <div class="acc-amount">隨時可儲值，無固定金額</div>
+    </div>
+
+    <div class="warning">
+      <strong>⚠ 注意事項</strong>
+      本月租金帳號<strong>限收款一次</strong>，請勿重複匯款。<br>
+      如需第二次匯款或有任何問題，請聯絡管理人。
+    </div>
+  </div>
+</div>
+
+<div class="footer">如有問題請聯絡管理人</div>
+
+<script>
+// ── Supabase 測試版 ──
+const SUPA_URL='https://fuvfvfmprxnhwxkexmtr.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1dmZ2Zm1wcnhuaHd4a2V4bXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjYxMTMsImV4cCI6MjA5MjM0MjExM30.ng7GT-watoOSlNhUTsGjloYvDdeKQsvZVLzHipJk9FY';
+const db=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let currentRoomId=null;
+let realtimeChannel=null;
+
+function monthKey(){
+  const n=new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+}
+function monthLabel(){
+  const n=new Date();
+  return `${n.getFullYear()} 年 ${n.getMonth()+1} 月`;
+}
+
+function showError(msg){
+  const el=document.getElementById('error-msg');
+  el.textContent=msg; el.style.display='block';
+  document.getElementById('result').style.display='none';
+}
+function hideError(){ document.getElementById('error-msg').style.display='none'; }
+
+function updateStatusUI(status){
+  const badge=document.getElementById('r-status-badge');
+  const overlay=document.getElementById('acc-paid-overlay');
+  if(status==='paid'){
+    badge.innerHTML='<span class="status-paid"><span class="status-dot"></span>本月已付款</span>';
+    overlay.style.display='flex';
+  } else if(status==='partial'){
+    badge.innerHTML='<span class="status-partial"><span class="status-dot"></span>部分付款</span>';
+    overlay.style.display='none';
+  } else {
+    badge.innerHTML='<span class="status-unpaid"><span class="status-dot"></span>尚未付款</span>';
+    overlay.style.display='none';
+  }
+}
+
+function subscribeRealtime(roomId, mk){
+  // 取消上一次訂閱
+  if(realtimeChannel){ db.removeChannel(realtimeChannel); realtimeChannel=null; }
+
+  realtimeChannel=db.channel(`pay-${roomId}-${mk}`)
+    .on('postgres_changes',{
+      event:'*', schema:'public', table:'test_payments',
+      filter:`room_id=eq.${roomId}`
+    }, payload=>{
+      const p=payload.new;
+      if(p&&p.month_key===mk){
+        updateStatusUI(p.status||'unpaid');
+      }
+    })
+    .subscribe();
+}
+
+async function doQuery(){
+  const raw=document.getElementById('phone-input').value.trim();
+  if(!raw){ showError('請輸入手機號碼'); return; }
+  const phone=raw.replace(/[\s\-]/g,'');
+
+  const btn=document.getElementById('query-btn');
+  btn.disabled=true; btn.textContent='查詢中…';
+  hideError();
+
+  try{
+    const {data:rooms,error}=await db.from('test_rooms').select('*')
+      .or(`phone.eq.${phone},phone.eq.${raw},phone.ilike.%${phone}%`);
+    if(error) throw error;
+
+    const matched=(rooms||[]).filter(r=>r.tenant&&r.tenant.trim());
+    if(!matched.length){
+      showError('查無此電話號碼的租客資料，請確認號碼是否正確。');
+      return;
+    }
+
+    const r=matched[0];
+    currentRoomId=r.id;
+    const mk=monthKey();
+
+    // 查本月付款
+    const {data:pays}=await db.from('test_payments').select('*')
+      .eq('room_id',r.id).eq('month_key',mk);
+    const pay=pays&&pays[0];
+    const status=pay?.status||'unpaid';
+
+    // 填入基本資料
+    document.getElementById('r-room').textContent=r.name;
+    document.getElementById('r-name').textContent=r.tenant;
+    document.getElementById('r-addr').textContent=r.addr||'—';
+    document.getElementById('r-month').textContent=monthLabel();
+
+    // 租金
+    const elecMonthly=r.elec_type==='monthly'?(r.elec||0):0;
+    const totalRent=(r.rent||0)+elecMonthly;
+    document.getElementById('r-rent').textContent=r.rent?`$${r.rent.toLocaleString()}`:'—';
+
+    // 電費
+    const elecEl=document.getElementById('r-elec');
+    if(r.elec_type==='monthly'&&r.elec>0){
+      elecEl.textContent=`$${r.elec.toLocaleString()}（月結含租）`;
+    } else if(r.elec_type==='prepay'){
+      elecEl.textContent='儲值電費';
+    } else {
+      elecEl.textContent='—';
+    }
+
+    // 狀態 badge
+    updateStatusUI(status);
+
+    // 租金帳號
+    const accBlock=document.getElementById('acc-rent-block');
+    if(r.acc){
+      document.getElementById('r-acc').textContent=r.acc;
+      document.getElementById('r-acc-amount').innerHTML=
+        `應匯金額：<strong>$${totalRent.toLocaleString()}</strong>`;
+      accBlock.style.display='block';
+    } else {
+      accBlock.style.display='none';
+    }
+
+    // 儲值電費帳號
+    const elecBlock=document.getElementById('acc-elec-block');
+    if(r.elec_type==='prepay'&&r.elec_acc){
+      document.getElementById('r-elec-acc').textContent=r.elec_acc;
+      elecBlock.style.display='block';
+    } else {
+      elecBlock.style.display='none';
+    }
+
+    document.getElementById('result').style.display='block';
+
+    // 開啟即時訂閱
+    subscribeRealtime(r.id, mk);
+
+  }catch(e){
+    console.error(e);
+    showError('查詢失敗，請稍後再試。');
+  } finally {
+    btn.disabled=false; btn.textContent='查詢本月繳費';
+  }
+}
+</script>
+</body>
+</html>

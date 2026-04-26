@@ -30,7 +30,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rxl);padding:2.5rem 2rem;width:100%;max-width:380px;}
 .auth-logo{text-align:center;margin-bottom:2rem;}
 .auth-logo .mark{font-size:36px;margin-bottom:8px;}
-.auth-logo h1{font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+.auth-logo h1{font-size:20px;font-weight:700;letter-spacing:-.5px;}
 .auth-logo p{font-size:13px;color:var(--text3);margin-top:4px;}
 .form-field{margin-bottom:14px;}
 .form-field label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:5px;}
@@ -45,7 +45,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 .layout{display:flex;min-height:100vh;}
 .sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:10;transform:translateX(0);transition:transform .2s;}
 .sidebar-logo{padding:1.5rem 1.25rem 1rem;border-bottom:1px solid var(--border);}
-.sidebar-logo .app-name{font-size:15px;font-weight:700;letter-spacing:-0.3px;}
+.sidebar-logo .app-name{font-size:15px;font-weight:700;letter-spacing:-.3px;}
 .sidebar-logo .app-sub{font-size:11px;color:var(--text3);margin-top:2px;}
 .sidebar-user{padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
 .user-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
@@ -69,40 +69,30 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
   .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;}
   .sidebar-overlay.show{display:block;}
   .main{margin-left:0;padding:.875rem;padding-bottom:76px;}
-  /* Bottom tab bar */
   .mobile-tabbar{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:30;padding-bottom:env(safe-area-inset-bottom);}
   .mobile-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 4px 8px;font-size:10px;color:var(--text3);cursor:pointer;border:none;background:none;font-family:inherit;gap:2px;position:relative;}
   .mobile-tab.active{color:var(--text);}
   .mobile-tab .tab-ico{font-size:20px;line-height:1;}
   .mobile-tab .tab-badge{position:absolute;top:4px;right:calc(50% - 16px);background:var(--red);color:#fff;font-size:9px;border-radius:20px;padding:1px 5px;font-family:'DM Mono',monospace;}
-  /* Hamburger button — shown only on mobile */
   .mobile-menu-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:18px;flex-shrink:0;}
-  /* Stats 2 col */
   .stats{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem;}
   .stat{padding:.75rem 1rem;}
   .stat-val{font-size:20px;}
-  /* Page header stacks vertically */
   .pg-header{flex-direction:column;gap:8px;margin-bottom:1rem;}
   .pg-title{font-size:17px;}
   .pg-sub{font-size:12px;}
   .pg-header>div:last-child{width:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;}
-  /* Room grid 1 col */
   .room-grid{grid-template-columns:1fr;}
-  /* Report 1 col */
   .rpt-grid{grid-template-columns:1fr;gap:10px;}
-  /* Addr stat 2 col */
   .addr-stat-grid{grid-template-columns:1fr 1fr;gap:8px;}
-  /* Tables scroll horizontally */
   .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   table{min-width:480px;font-size:12px;}
   th{padding:8px 10px;font-size:10px;}
   td{padding:8px 10px;}
-  /* Controls bar */
   .ctrl{gap:6px;flex-wrap:wrap;}
   .srch{max-width:100%!important;flex:1;min-width:0;}
   .fsel{font-size:12px;padding:7px 8px;}
   .btn-sm{padding:5px 9px;font-size:11.5px;}
-  /* Modal: bottom sheet */
   .modal-ov{align-items:flex-end;padding:0;}
   .modal{max-width:100%!important;width:100%;border-radius:18px 18px 0 0;max-height:90vh!important;overflow-y:auto!important;padding:0;}
   .modal-hd{position:sticky;top:0;background:var(--surface);z-index:2;padding:1.25rem 1.25rem .75rem;border-bottom:1px solid var(--border);}
@@ -111,33 +101,21 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
   .modal .fg{padding:1rem 1.25rem 0;}
   .modal .modal-info{margin:0 1.25rem .5rem;}
   .modal .ff.full+.modal-ft,.modal .ff+.modal-ft{margin-top:0;}
-  /* Form 1 col */
   .fg{grid-template-columns:1fr;gap:10px;}
   .ff.full{grid-column:1;}
-  /* Auth page */
   .auth-wrap{padding:.75rem;align-items:flex-start;padding-top:2.5rem;}
   .auth-card{padding:1.75rem 1.25rem;}
-  /* Month nav compact */
   .month-disp{min-width:66px;font-size:12px;}
   .mnth-btn{width:26px;height:26px;font-size:14px;}
-  /* Addr bar horizontal scroll, hide scrollbar */
   .addr-bar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
   .addr-bar::-webkit-scrollbar{display:none;}
   .addr-pill{white-space:nowrap;flex-shrink:0;}
-  /* Setting rows: stack label + input */
   .setting-row{flex-direction:column;align-items:flex-start;gap:8px;}
   .setting-row input[type=text],.setting-row input[type=password]{width:100%!important;}
-  /* GW cards stack */
-  #panel-ecpay .setting-row>div:first-child,#panel-bank .setting-row>div:first-child{flex:none;}
-  /* Role/elec option grids: 1 col on very small */
-  /* Dashboard two-col list: single col */
   #dash-unpaid table,#dash-paid table{min-width:0;font-size:12px;}
-  /* Report bars compact */
   .bar-lbl{min-width:44px;font-size:11px;}
   .bar-val{min-width:58px;font-size:11px;}
-  /* Room card actions wrap */
   .rc-acts{gap:4px;}
-  /* Expiry banner */
   #expiry-banner{font-size:12px;padding:.6rem 1rem;}
 }
 @media(max-width:400px){
@@ -153,8 +131,7 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
   .main{margin-left:230px;padding:2rem;}
 }
 .main{flex:1;min-width:0;}
-.page{display:none;animation:fadeIn .2s ease;}
-.page.active{display:block;}
+.page{display:none;animation:fadeIn .2s ease;}.page.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* ── HEADER ── */
@@ -194,6 +171,14 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
 .mnth-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:15px;color:var(--text2);display:flex;align-items:center;justify-content:center;}
 .mnth-btn:hover{background:var(--surface2);}
 
+/* ── ADDRESS BAR ── */
+.addr-bar{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap;}
+.addr-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;cursor:pointer;font-family:inherit;color:var(--text2);transition:all .12s;}
+.addr-pill:hover{background:var(--surface2);}
+.addr-pill.active{background:var(--text);color:#fff;border-color:var(--text);}
+.addr-badge{font-size:10px;background:rgba(0,0,0,.1);padding:1px 6px;border-radius:20px;font-family:'DM Mono',monospace;}
+.addr-pill.active .addr-badge{background:rgba(255,255,255,.2);color:#fff;}
+
 /* ── ROOM GRID ── */
 .room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
 .room-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1rem 1.25rem;transition:box-shadow .15s;position:relative;}
@@ -230,6 +215,75 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
 .topup-input{flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;min-width:0;}
 .section-divider{height:1px;background:var(--border);margin:8px 0;}
 
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead tr{border-bottom:2px solid var(--border);}
+th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;color:var(--text2);background:var(--bg);}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(0,0,0,.015);}
+.mono{font-family:'DM Mono',monospace;}
+
+/* ── MODAL ── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem;}
+.modal{background:var(--surface);border-radius:var(--rlg);padding:1.75rem;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto;}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;padding-bottom:.875rem;border-bottom:1px solid var(--border);}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);line-height:1;}
+.modal-ft{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);}
+.modal-info{font-size:12.5px;color:var(--text2);background:var(--surface2);border-radius:var(--r);padding:10px 12px;margin-bottom:1rem;line-height:1.6;}
+
+/* ── FORM ── */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.5rem;}
+.ff.full{grid-column:1/-1;}
+.ff label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px;}
+.ff input,.ff select,.ff textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13.5px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s;}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--blue);}
+.ff textarea{min-height:60px;resize:vertical;}
+
+/* ── MISC ── */
+.empty{text-align:center;padding:3rem 1rem;color:var(--text3);}
+.eico{font-size:32px;margin-bottom:8px;}
+.addr-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1.25rem;}
+.addr-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1rem 1.25rem;}
+.addr-stat-name{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase;}
+.addr-stat-rows{font-size:12.5px;}
+.addr-stat-row{display:flex;justify-content:space-between;padding:2px 0;}
+.addr-stat-row span:last-child{font-family:'DM Mono',monospace;font-weight:500;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;z-index:9999;pointer-events:none;}
+#toast.show{opacity:1;}
+
+/* ── REPORT ── */
+.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem;}
+.rpt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.125rem;}
+.rpt-card h3{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:14px;}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.bar-lbl{font-size:12px;color:var(--text2);min-width:52px;}
+.bar-track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.bar-val{font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);min-width:70px;text-align:right;}
+
+/* ── SETTINGS ── */
+.setting-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.25rem;margin-bottom:1rem;}
+.setting-section h3{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:13px;color:var(--text);}
+.setting-desc{font-size:11.5px;color:var(--text3);margin-top:2px;}
+.gw-tabs{display:flex;gap:6px;margin-bottom:1rem;}
+.gw-tab{padding:7px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;font-family:inherit;color:var(--text2);}
+.gw-tab.active{background:var(--text);color:#fff;border-color:var(--text);}
+.gw-panel{display:none;}.gw-panel.active{display:block;}
+
+/* ── EXPIRY / OVERDUE BANNERS ── */
+#expiry-banner{position:fixed;top:0;left:230px;right:0;z-index:50;background:#FAEEDA;border-bottom:1px solid #EF9F27;padding:10px 20px;font-size:13px;color:#854F0B;}
+.overdue-banner{display:none;position:fixed;top:0;left:230px;right:0;z-index:51;background:#FEE2E2;border-bottom:2px solid var(--red);padding:9px 20px;font-size:13px;color:var(--red-dk);}
+.overdue-banner.show{display:block;}
+@media(max-width:768px){#expiry-banner,.overdue-banner{left:0;}}
+
 /* ── 儲電通知 ── */
 .elec-topup-box{background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:7px 10px;margin-bottom:6px;}
 .elec-topup-title{font-size:11px;font-weight:600;color:#92400E;margin-bottom:4px;}
@@ -247,13 +301,34 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
 .repair-days{font-size:9px;opacity:.8;}
 .repair-done-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--green);color:#fff;cursor:pointer;font-family:inherit;margin-top:6px;display:block;width:100%;}
 
-/* ── 改帳記錄 ── */
+/* ── 改帳 ── */
 .adj-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;color:var(--amber-dk);position:relative;line-height:1;flex-shrink:0;}
 .adj-tooltip{position:absolute;bottom:calc(100% + 6px);right:0;background:var(--text);color:#fff;border-radius:8px;padding:8px 12px;font-size:11.5px;line-height:1.6;min-width:200px;z-index:200;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2);}
 .adj-tooltip::after{content:'';position:absolute;top:100%;right:10px;border:5px solid transparent;border-top-color:var(--text);}
 .adj-tooltip-row{display:flex;justify-content:space-between;gap:12px;}
 .adj-tooltip-label{color:rgba(255,255,255,.6);}
 
+/* ── 點交管理 ── */
+.handover-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.1rem 1.25rem;margin-bottom:12px;}
+.handover-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.handover-room-name{font-size:15px;font-weight:700;}
+.handover-room-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.handover-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.handover-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.handover-section-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;}
+.handover-textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;resize:vertical;min-height:70px;}
+.handover-textarea:focus{border-color:var(--blue);}
+.handover-field-row{display:flex;gap:8px;align-items:center;margin-top:8px;}
+.handover-field-label{font-size:12px;color:var(--text2);min-width:60px;flex-shrink:0;}
+.handover-field-input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;}
+.handover-done-box{background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--green-dk);margin-top:6px;}
+.deposit-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.deposit-opt{border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;}
+.deposit-opt.active{border:2px solid var(--text);background:var(--surface2);}
+.deposit-opt-title{font-size:13px;font-weight:600;}
+.deposit-opt-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+
+/* ── 管理人報表 ── */
 .mgrrpt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
 .mgrrpt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1rem 1.25rem;}
 .mgrrpt-card-label{font-size:11.5px;color:var(--text3);margin-bottom:5px;}
@@ -279,113 +354,9 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
 .income-row-val{font-family:'DM Mono',monospace;font-weight:500;}
 .income-total{font-size:20px;font-weight:700;color:var(--green-dk);}
 .room-list-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;}
-@media(max-width:768px){
-  .mgrrpt-summary{grid-template-columns:1fr 1fr;}
-  .mgrrpt-card-val{font-size:18px;}
-}
-.handover-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.1rem 1.25rem;margin-bottom:12px;}
-.handover-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
-.handover-room-name{font-size:15px;font-weight:700;}
-.handover-room-sub{font-size:12px;color:var(--text2);margin-top:2px;}
-.handover-actions{display:flex;gap:8px;flex-wrap:wrap;}
-.handover-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
-.handover-section-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;}
-.handover-textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;resize:vertical;min-height:70px;}
-.handover-textarea:focus{border-color:var(--blue);}
-.handover-field-row{display:flex;gap:8px;align-items:center;margin-top:8px;}
-.handover-field-label{font-size:12px;color:var(--text2);min-width:60px;flex-shrink:0;}
-.handover-field-input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;}
-.handover-done-box{background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--green-dk);margin-top:6px;}
-.deposit-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.deposit-opt{border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;}
-.deposit-opt.active{border:2px solid var(--text);background:var(--surface2);}
-.deposit-opt-title{font-size:13px;font-weight:600;}
-.deposit-opt-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+@media(max-width:768px){.mgrrpt-summary{grid-template-columns:1fr 1fr;}.mgrrpt-card-val{font-size:18px;}}
 
-/* ── 待修逾期紅字橫幅 ── */
-.overdue-banner{display:none;position:fixed;top:0;left:230px;right:0;z-index:51;background:#FEE2E2;border-bottom:2px solid var(--red);padding:9px 20px;font-size:13px;color:var(--red-dk);}
-.overdue-banner.show{display:block;}
-@media(max-width:768px){
-  .overdue-banner{left:0;}
-}
-
-
-/* ── TABLE ── */
-.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-thead{background:var(--surface2);}
-th{padding:9px 14px;text-align:left;font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--border);}
-td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);}
-tr:last-child td{border-bottom:none;}
-tbody tr:hover{background:var(--surface2);}
-.mono{font-family:'DM Mono',monospace;font-size:12px;}
-
-/* ── MODAL ── */
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem;}
-.modal{background:var(--surface);border-radius:var(--rlg);padding:1.75rem;width:100%;max-width:420px;border:1px solid var(--border);max-height:90vh;overflow-y:auto;}
-.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
-.modal-title{font-size:16px;font-weight:700;}
-.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);line-height:1;padding:0 4px;}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.ff{display:flex;flex-direction:column;gap:5px;}
-.ff.full{grid-column:1/-1;}
-.ff label{font-size:11.5px;color:var(--text2);font-weight:500;}
-.ff input,.ff select,.ff textarea{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;}
-.ff input:focus,.ff select:focus{border-color:var(--blue);}
-.ff textarea{resize:vertical;min-height:60px;}
-.modal-ft{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
-.modal-info{font-size:12px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:12px;line-height:1.6;}
-
-/* ── REPORT ── */
-.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;}
-.rpt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:1.25rem;}
-.rpt-card h3{font-size:12px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;}
-.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.bar-lbl{font-size:12px;color:var(--text2);min-width:54px;}
-.bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;}
-.bar-fill{height:100%;border-radius:4px;transition:width .4s;}
-.bar-val{font-size:12px;font-family:'DM Mono',monospace;min-width:72px;text-align:right;}
-
-/* ── EMPTY ── */
-.empty{text-align:center;padding:3rem;color:var(--text3);font-size:14px;}
-.empty .eico{font-size:32px;margin-bottom:10px;}
-/* ── ADDRESS ── */
-.addr-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;align-items:center;}
-.addr-pill{padding:5px 14px;border-radius:20px;font-size:12.5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;font-family:inherit;}
-.addr-pill:hover{background:var(--surface2);}
-.addr-pill.active{background:var(--text);color:#fff;border-color:var(--text);}
-.addr-badge{display:inline-block;font-size:10px;background:var(--surface2);color:var(--text3);border-radius:20px;padding:1px 6px;margin-left:4px;}
-.addr-pill.active .addr-badge{background:rgba(255,255,255,.2);color:#fff;}
-/* ── 地址管理 ── */
-.addr-mgr-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
-.addr-mgr-row:last-child{border-bottom:none;}
-.addr-mgr-name{font-size:13.5px;font-weight:500;}
-.addr-mgr-subs{font-size:11.5px;color:var(--text3);margin-top:2px;}
-.mgr-check-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
-.addr-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;margin-bottom:1.5rem;}
-.addr-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);padding:.9rem 1.1rem;}
-.addr-stat-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.addr-stat-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:2px;}
-.addr-stat-bar{height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
-.addr-stat-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s;}
-
-/* ── WEBHOOK STATUS ── */
-.wh-status{display:flex;align-items:center;gap:6px;font-size:12px;}
-.wh-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.wh-dot.inactive{background:var(--text3);animation:none;}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;}
-.toast.show{opacity:1;transform:none;}
-
-/* ── SETTINGS ── */
-.setting-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;margin-bottom:16px;}
-.setting-section-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}
-.setting-row{padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:13px;}
-.setting-row:last-child{border-bottom:none;}
-.setting-row-lbl{color:var(--text2);font-size:12px;margin-top:2px;}
-
+/* ── 測試版橫幅 ── */
 .test-banner{position:fixed;bottom:60px;right:12px;background:#EF4444;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:9999;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
 @media(min-width:769px){.test-banner{bottom:12px;}}
 </style>
@@ -439,7 +410,7 @@ tbody tr:hover{background:var(--surface2);}
       <button class="nav-item" onclick="goPage('mgrrpt')"><span class="ico">📈</span>管理人報表</button>
       <button class="nav-item" id="nav-managers" onclick="goPage('managers')"><span class="ico">👥</span>管理人帳號</button>
       <button class="nav-item" id="nav-addr-mgr" onclick="goPage('addrmgr')"><span class="ico">📍</span>地址管理</button>
-      <button class="nav-item" id="nav-archive" onclick="goPage('archive')"><span class="ico">🗂</span>歷史租客</button>
+      <button class="nav-item" id="nav-archive" onclick="goPage('archive')"><span class="ico">📖</span>歷史租客</button>
       <button class="nav-item" onclick="goPage('settings')"><span class="ico">⚙️</span>系統設定</button>
       <button class="nav-item" onclick="openExportModal()"><span class="ico">⬇</span>匯出 CSV</button>
     </nav>
@@ -606,7 +577,7 @@ tbody tr:hover{background:var(--surface2);}
         👤 你目前登入的帳號資訊。若需修改密碼，請點右側「改密碼」。
       </div>
       <div class="tbl-wrap">
-        <table><thead><tr><th>姓名</th><th>帳號</th><th>角色</th><th>建立時間</th><th>操作</th></tr></thead>
+        <table><thead><tr><th>姓名</th><th>帳號</th><th>角色</th><th>管理房間</th><th>建立時間</th><th>操作</th></tr></thead>
         <tbody id="mgr-tbody"></tbody></table>
       </div>
     </div>
@@ -1084,6 +1055,26 @@ tbody tr:hover{background:var(--surface2);}
     <div class="modal-ft">
       <button class="btn" onclick="closeModal('adjust-modal')">取消</button>
       <button class="btn btn-primary" onclick="confirmAdjust()">確認改帳</button>
+    </div>
+  </div>
+</div>
+
+<!-- 房間數上限 Modal -->
+<div class="modal-ov" id="room-limit-modal" style="display:none;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-hd"><span class="modal-title" id="room-limit-title">設定房間數上限</span><button class="modal-close" onclick="closeModal('room-limit-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div class="modal-info">設定此管理人最多可管理幾間房間。達到上限後無法新增房間，但仍可編輯現有房間。留空表示無限制。</div>
+      <div class="ff">
+        <label>房間數上限（留空 = 無限制）</label>
+        <input type="number" id="room-limit-input" placeholder="例：20" min="1" step="1">
+      </div>
+      <input type="hidden" id="room-limit-uid">
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('room-limit-modal')">取消</button>
+      <button class="btn btn-sm btn-danger" onclick="clearRoomLimit()">清除上限</button>
+      <button class="btn btn-primary" onclick="saveRoomLimit()">儲存</button>
     </div>
   </div>
 </div>
@@ -2128,16 +2119,24 @@ function renderManagers(){
   const all = isAdmin() ? [DEFAULT_OWNER,...managers] : [currentUser].filter(Boolean);
   tbody.innerHTML=all.map(m=>{
     const isSuspended=m.suspended===true;
-    const badge=isSuspended?'b-suspended':'';
     const roleText=isSuspended?`${roleLabel[m.role]||'管理人'} ⛔停權`:(roleLabel[m.role]||'管理人');
     const badgeClass=isSuspended?'b-suspended':(roleBadge[m.role]||'b-admin');
+    // 房間數上限
+    const roomLimit=m.roomLimit||null;
+    // 計算該管理人目前管理的房間數
+    const assignedAddrs=addresses.filter(a=>(a.managers||[]).includes(m.id)).map(a=>a.name);
+    const managedCount=rooms.filter(r=>assignedAddrs.includes(r.addr||'未分類')).length;
+    const limitStr=roomLimit?`${managedCount}/${roomLimit} 間`:'無限制';
+    const limitColor=roomLimit&&managedCount>=roomLimit?'var(--red-dk)':'var(--text3)';
     return `<tr style="${isSuspended?'opacity:.6':''}">
       <td><b>${m.name}</b></td>
       <td class="mono" style="font-size:12px">${m.username}</td>
       <td><span class="badge ${badgeClass}">${roleText}</span></td>
+      <td style="font-size:12px;color:${limitColor};font-family:'DM Mono',monospace;">${limitStr}</td>
       <td style="font-size:12px;color:var(--text3)">${m.createdAt||'系統預設'}</td>
       <td style="display:flex;gap:5px;flex-wrap:wrap;">
         ${isAdmin()&&m.role!=='owner'?`
+          <button class="btn btn-sm" onclick="openRoomLimitModal('${m.id}')">房間上限</button>
           <button class="btn btn-sm ${isSuspended?'btn-success':''}" onclick="toggleSuspend('${m.id}')">${isSuspended?'解除停權':'停權'}</button>
           <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
         `:''}
@@ -2174,6 +2173,30 @@ function saveManager(){
   managers.push({id:'m'+Date.now(),name,username,password,role,createdAt:new Date().toLocaleDateString('zh-TW')});
   save(); closeModal('mgr-modal'); renderManagers(); toast(isCoowner?'副管理員已新增':'管理人已新增');
 }
+// ── 房間數上限 ──
+function openRoomLimitModal(id){
+  if(!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  const m=managers.find(x=>x.id===id); if(!m) return;
+  document.getElementById('room-limit-title').textContent=`${m.name} — 房間數上限`;
+  document.getElementById('room-limit-uid').value=id;
+  document.getElementById('room-limit-input').value=m.roomLimit||'';
+  document.getElementById('room-limit-modal').style.display='flex';
+}
+function saveRoomLimit(){
+  const id=document.getElementById('room-limit-uid').value;
+  const val=document.getElementById('room-limit-input').value.trim();
+  const m=managers.find(x=>x.id===id); if(!m) return;
+  m.roomLimit=val?parseInt(val)||null:null;
+  save(); closeModal('room-limit-modal'); renderManagers();
+  toast(m.roomLimit?`已設定上限 ${m.roomLimit} 間`:'已清除房間上限');
+}
+function clearRoomLimit(){
+  const id=document.getElementById('room-limit-uid').value;
+  const m=managers.find(x=>x.id===id); if(!m) return;
+  m.roomLimit=null;
+  save(); closeModal('room-limit-modal'); renderManagers(); toast('已清除房間上限');
+}
+
 function toggleSuspend(id){
   if(!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
   const m=managers.find(x=>x.id===id);
@@ -2200,6 +2223,18 @@ function openRoomModal(id){
   if(!id){
     // 新增房間：只有 owner/coowner 可以，或管理人在自己有負責的地址才能新增
     if(!isOwner()&&getVisibleAddrNames().length===0){ toast('權限不足'); return; }
+    // 管理人房間數上限檢查
+    if(!isOwner()&&currentUser?.role==='manager'){
+      const limit=currentUser.roomLimit||null;
+      if(limit){
+        const myAddrs=getVisibleAddrNames();
+        const myRooms=rooms.filter(r=>myAddrs.includes(r.addr||'未分類')).length;
+        if(myRooms>=limit){
+          toast(`已達房間上限（${limit} 間），無法新增`);
+          return;
+        }
+      }
+    }
   }
   editingRoomId=id||null;
   document.getElementById('room-modal-title').textContent=id?'編輯房間':'新增房間';
