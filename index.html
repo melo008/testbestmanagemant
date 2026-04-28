@@ -124,6 +124,9 @@ nav{padding:1rem .75rem;flex:1;overflow-y:auto;}
   .addr-stat-grid{grid-template-columns:1fr;}
   #dash-unpaid,#dash-paid{font-size:11px;}
 }
+@media(max-width:768px){
+  .tbl-scroll-hint{display:block;}
+}
 @media(min-width:769px){
   .mobile-tabbar{display:none;}
   .mobile-menu-btn{display:none;}
@@ -396,6 +399,8 @@ tr:hover td{background:rgba(0,0,0,.015);}
       <div class="user-info">
         <div class="name" id="nav-name">管理員</div>
         <div class="role" id="nav-role">房東</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px;" id="nav-username"></div>
+        <div style="font-size:10px;color:var(--blue-dk);margin-top:1px;font-weight:500;" id="nav-org"></div>
       </div>
     </div>
     <nav>
@@ -411,6 +416,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
       <button class="nav-item" id="nav-managers" onclick="goPage('managers')"><span class="ico">👥</span>管理人帳號</button>
       <button class="nav-item" id="nav-addr-mgr" onclick="goPage('addrmgr')"><span class="ico">📍</span>地址管理</button>
       <button class="nav-item" id="nav-archive" onclick="goPage('archive')"><span class="ico">📖</span>歷史租客</button>
+      <button class="nav-item" id="nav-orgs" onclick="goPage('orgs')" style="display:none;"><span class="ico">🏢</span>組織管理</button>
       <button class="nav-item" onclick="goPage('settings')"><span class="ico">⚙️</span>系統設定</button>
       <button class="nav-item" onclick="openExportModal()"><span class="ico">⬇</span>匯出 CSV</button>
     </nav>
@@ -514,8 +520,9 @@ tr:hover td{background:rgba(0,0,0,.015);}
       <div class="ctrl">
         <div class="srch" style="max-width:260px;"><span class="srch-ico">🔍</span><input type="text" id="tenant-search" placeholder="搜尋姓名、電話、地址…" oninput="renderTenants()"></div>
       </div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>房間</th><th>姓名</th><th>電話</th><th>緊急聯絡</th><th>地址</th><th>入住日</th><th>退租日</th><th>押金</th><th>月租</th><th>備註</th><th>操作</th></tr></thead>
+      <div class="tbl-scroll-hint">← 左右滑動查看更多欄位 →</div>
+      <div class="tbl-wrap sticky-first">
+        <table><thead><tr><th>房間 / 姓名</th><th>電話</th><th>緊急聯絡</th><th>地址</th><th>入住日</th><th>退租日</th><th>押金</th><th>月租</th><th>備註</th><th>操作</th></tr></thead>
         <tbody id="tenant-tbody"></tbody></table>
       </div>
     </div>
@@ -531,8 +538,9 @@ tr:hover td{background:rgba(0,0,0,.015);}
         </div>
       </div>
       <div class="addr-bar" id="hist-addr-bar" style="margin-bottom:1rem;"></div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>房間</th><th>租客</th><th>地址</th><th>虛擬帳號</th><th>應收金額</th><th>狀態</th><th>付款時間</th><th>操作</th></tr></thead>
+      <div class="tbl-scroll-hint">← 左右滑動查看更多欄位 →</div>
+      <div class="tbl-wrap sticky-first">
+        <table><thead><tr><th>房間 / 租客</th><th>地址</th><th>虛擬帳號</th><th>應收金額</th><th>狀態</th><th>付款時間</th><th>操作</th></tr></thead>
         <tbody id="hist-tbody"></tbody></table>
       </div>
     </div>
@@ -657,7 +665,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>地址名稱</th><th>房間數</th><th>電費類型</th><th>負責管理人</th><th>操作</th></tr></thead>
+          <thead><tr><th>地址名稱</th><th>組織</th><th>房間數</th><th>電費類型</th><th>負責管理人</th><th>操作</th></tr></thead>
           <tbody id="addr-mgr-tbody"></tbody>
         </table>
       </div>
@@ -689,6 +697,20 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <div class="modal-ft">
           <button class="btn btn-primary" onclick="closeModal('archive-detail-modal')">關閉</button>
         </div>
+      </div>
+    </div>
+
+    <!-- 組織管理 (superadmin only) -->
+    <div class="page" id="page-orgs">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">組織管理</div><div class="pg-sub">客戶公司與房東設定</div></div></div>
+        <button class="btn btn-primary" onclick="openOrgModal()">+ 新增組織</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>組織名稱</th><th>收款方式</th><th>收款資訊</th><th>帳號數</th><th>操作</th></tr></thead>
+          <tbody id="orgs-tbody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -957,10 +979,14 @@ tr:hover td{background:rgba(0,0,0,.015);}
           </div>
         </div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">地址名稱</div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
           <input type="text" id="addr-edit-name" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
           <button class="btn btn-sm btn-danger" onclick="deleteAddr()">刪除地址</button>
         </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">所屬組織</div>
+        <select id="addr-edit-org" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-bottom:2px;">
+          <option value="">未分配（admin 可見）</option>
+        </select>
         <div id="addr-prepay-fields" style="margin-top:10px;display:none;">
           <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">儲值電費帳號（選填）</div>
           <input type="text" id="addr-elec-acc" placeholder="例：8090010099901" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px;">
@@ -1059,6 +1085,59 @@ tr:hover td{background:rgba(0,0,0,.015);}
   </div>
 </div>
 
+<!-- 組織 Modal -->
+<div class="modal-ov" id="org-modal" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-hd"><span class="modal-title" id="org-modal-title">新增組織</span><button class="modal-close" onclick="closeModal('org-modal')">×</button></div>
+    <div style="padding:1rem 1.25rem;">
+      <div class="fg">
+        <div class="ff full"><label>組織名稱 *</label><input type="text" id="org-name" placeholder="例：Z租賃公司"></div>
+        <div class="ff full">
+          <label>收款方式</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:2px;">
+            <div id="pay-opt-manual" onclick="setOrgPay('manual')" style="border:2px solid var(--text);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:center;">
+              <div style="font-size:12px;font-weight:600;">手動對帳</div>
+            </div>
+            <div id="pay-opt-bank" onclick="setOrgPay('bank')" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:center;">
+              <div style="font-size:12px;font-weight:600;">銀行帳號</div>
+            </div>
+            <div id="pay-opt-ecpay" onclick="setOrgPay('ecpay')" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:center;">
+              <div style="font-size:12px;font-weight:600;">綠界</div>
+            </div>
+          </div>
+        </div>
+        <div class="ff full" id="org-bank-fields" style="display:none;">
+          <div class="fg">
+            <div class="ff"><label>銀行名稱</label><input type="text" id="org-bank-name" placeholder="例：玉山銀行"></div>
+            <div class="ff"><label>銀行帳號</label><input type="text" id="org-bank-acc" placeholder="帳號"></div>
+            <div class="ff full"><label>備註（選填）</label><input type="text" id="org-bank-note" placeholder="例：戶名：Z公司"></div>
+          </div>
+        </div>
+        <div class="ff full" id="org-ecpay-fields" style="display:none;">
+          <label>綠界 MerchantID</label><input type="text" id="org-ecpay-id" placeholder="填入後可自動取號">
+        </div>
+      </div>
+      <input type="hidden" id="org-editing-id">
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600;">指定負責人（從現有帳號選）</div>
+        <div id="org-owner-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="org-owner-select" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;">
+            <option value="">選擇帳號...</option>
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="addOrgOwnerFromSelect()">指定</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;">負責人登入後新增的帳號將自動歸屬此組織</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-sm btn-danger" id="org-delete-btn" onclick="deleteOrg()" style="display:none;margin-right:auto;">刪除組織</button>
+      <button class="btn" onclick="closeModal('org-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveOrg()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 房間數上限 Modal -->
 <div class="modal-ov" id="room-limit-modal" style="display:none;">
   <div class="modal" style="max-width:360px;">
@@ -1133,7 +1212,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
 
 <script>
 // ── DATA ──
-let rooms=[], payments={}, managers=[], addresses=[], tenantArchive=[], curYear, curMonth, editingRoomId=null;
+let rooms=[], payments={}, managers=[], addresses=[], tenantArchive=[], organizations=[], curYear, curMonth, editingRoomId=null, currentOrg=null;
 let currentUser=null, activeAddr='all';
 
 const now=new Date(); curYear=now.getFullYear(); curMonth=now.getMonth();
@@ -1183,6 +1262,7 @@ async function save(){
         repairs:r.repairs||[],
         handover_data:r.handoverData||null,
         deposit_data:r.depositData||null,
+        org_id:r.org_id||getCurrentOrgId()||null,
         updated_at:new Date().toISOString()
       }));
       await db.from('test_rooms').upsert(roomRows);
@@ -1209,7 +1289,16 @@ async function save(){
     if(managers.length){
       await db.from('test_managers').upsert(managers.map(m=>({
         id:m.id, name:m.name, username:m.username, password:m.password,
-        role:m.role||'manager', suspended:m.suspended||false
+        role:m.role||'manager', suspended:m.suspended||false,
+        org_id:m.org_id||null, room_limit:m.roomLimit||null
+      })));
+    }
+    // 儲存組織
+    if(organizations.length){
+      await db.from('test_organizations').upsert(organizations.map(o=>({
+        id:o.id, name:o.name, payment_type:o.paymentType||'manual',
+        bank_name:o.bankName||null, bank_account:o.bankAccount||null,
+        bank_note:o.bankNote||null, ecpay_merchant_id:o.ecpayMerchantId||null
       })));
     }
     // Addresses
@@ -1217,7 +1306,8 @@ async function save(){
       await db.from('test_addresses').upsert(addresses.map(a=>({
         name:a.name, elec_type:a.elecType||'monthly',
         elec_acc:a.elecAcc||null, elec_price:a.elecPrice||0,
-        managers:a.managers||[]
+        managers:a.managers||[],
+        org_id:a.org_id||getCurrentOrgId()||null
       })),{onConflict:'name'});
     }
     // Archive
@@ -1240,7 +1330,20 @@ async function load(){
   try{
     showLoading(true);
     // Rooms
-    const {data:rData}=await db.from('test_rooms').select('*');
+    // 載入組織
+    const {data:orgData}=await db.from('test_organizations').select('*');
+    if(orgData) organizations=orgData.map(o=>({
+      id:o.id, name:o.name, paymentType:o.payment_type||'manual',
+      bankName:o.bank_name||'', bankAccount:o.bank_account||'',
+      bankNote:o.bank_note||'', ecpayMerchantId:o.ecpay_merchant_id||'',
+      createdAt:o.created_at?new Date(o.created_at).toLocaleDateString('zh-TW'):''
+    }));
+
+    // 依 org_id 過濾（superadmin 看全部，org_owner/manager 只看自己的）
+    const orgFilter = getCurrentOrgId();
+    let roomQuery = db.from('test_rooms').select('*');
+    if(orgFilter) roomQuery = roomQuery.eq('org_id', orgFilter);
+    const {data:rData}=await roomQuery;
     if(rData) rooms=rData.map(r=>({
       id:r.id, name:r.name, tenant:r.tenant||'', phone:r.phone||'',
       emergency:r.emergency||'', rent:r.rent||0, deposit:r.deposit||0,
@@ -1252,7 +1355,8 @@ async function load(){
       elecTopups:r.elec_topups||[],
       repairs:r.repairs||[],
       handoverData:r.handover_data||null,
-      depositData:r.deposit_data||null
+      depositData:r.deposit_data||null,
+      org_id:r.org_id||null
     }));
     // Payments
     const {data:pData}=await db.from('test_payments').select('*');
@@ -1271,18 +1375,25 @@ async function load(){
       });
     }
     // Managers
-    const {data:mData}=await db.from('test_managers').select('*');
+    // superadmin 看全部管理人；org_owner/manager 只看自己 org 的
+    let mgrQuery = db.from('test_managers').select('*');
+    if(orgFilter) mgrQuery = mgrQuery.eq('org_id', orgFilter);
+    // 如果是 superadmin 沒有 orgFilter，就直接查全部（不加 filter）
+    const {data:mData}=await mgrQuery;
     if(mData) managers=mData.map(m=>({
       id:m.id, name:m.name, username:m.username, password:m.password,
       role:m.role||'manager', suspended:m.suspended||false,
+      org_id:m.org_id||null, roomLimit:m.room_limit||null,
       createdAt:m.created_at?new Date(m.created_at).toLocaleDateString('zh-TW'):''
     }));
     // Addresses
-    const {data:aData}=await db.from('test_addresses').select('*');
+    let addrQuery = db.from('test_addresses').select('*');
+    if(orgFilter) addrQuery = addrQuery.eq('org_id', orgFilter);
+    const {data:aData}=await addrQuery;
     if(aData) addresses=aData.map(a=>({
       name:a.name, elecType:a.elec_type||'monthly',
       elecAcc:a.elec_acc||'', elecPrice:a.elec_price||0,
-      managers:a.managers||[]
+      managers:a.managers||[], org_id:a.org_id||null
     }));
     // Archive
     const {data:arcData}=await db.from('test_tenant_archive').select('*');
@@ -1347,9 +1458,15 @@ async function loadMgrExpenses(){
   }catch(e){ console.error('loadMgrExpenses error:',e); }
 }
 
-const DEFAULT_OWNER={id:'owner',name:'房東',username:'admin',password:'admin123',role:'owner'};
+const DEFAULT_OWNER={id:'owner',name:'房東',username:'admin',password:'admin123',role:'owner',org_id:null};
 
 function getUsers(){ return [DEFAULT_OWNER,...managers]; }
+// org_owner 管理自己組織的管理人
+function getOrgManagers(){
+  if(isSuperAdmin()) return managers;
+  if(isOrgOwner()) return managers.filter(m=>m.org_id===currentUser.org_id);
+  return [];
+}
 
 function doLogin(){
   const u=document.getElementById('login-user').value.trim();
@@ -1363,14 +1480,48 @@ function doLogin(){
     return;
   }
   currentUser=found;
+  // 設定當前組織
+  currentOrg = found.org_id ? organizations.find(o=>o.id===found.org_id)||null : null;
   document.getElementById('auth-err').style.display='none';
+  // 顯示/隱藏 superadmin 功能
+  const orgNavBtn=document.getElementById('nav-orgs');
+  if(orgNavBtn) orgNavBtn.style.display=(found.role==='owner'||found.role==='superadmin')?'':'none';
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
+  // 頭像顏色
+  const avatarColors={
+    owner:    {bg:'#EDE9FE',fg:'#4C1D95'},
+    superadmin:{bg:'#EDE9FE',fg:'#4C1D95'},
+    coowner:  {bg:'#FEF3C7',fg:'#92400E'},
+    org_owner:{bg:'#E1F5EE',fg:'#0F6E56'},
+    manager:  {bg:'#E6F1FB',fg:'#185FA5'},
+  };
+  const roleLabels={
+    owner:'Admin（最高權限）',
+    superadmin:'Admin（最高權限）',
+    coowner:'副管理員',
+    org_owner:'組織負責人',
+    manager:'管理人',
+  };
+  const ac=avatarColors[found.role]||avatarColors.manager;
   document.getElementById('nav-name').textContent=found.name;
-  document.getElementById('nav-role').textContent=found.role==='owner'?'Admin（最高權限）':found.role==='coowner'?'副管理員':'管理人';
+  document.getElementById('nav-role').textContent=roleLabels[found.role]||'管理人';
   document.getElementById('nav-avatar').textContent=found.name[0];
-  document.getElementById('nav-avatar').style.background=found.role==='owner'?'#EDE9FE':found.role==='coowner'?'#FEF3C7':'#E6F1FB';
-  document.getElementById('nav-avatar').style.color=found.role==='owner'?'#4C1D95':found.role==='coowner'?'#92400E':'#185FA5';
+  document.getElementById('nav-avatar').style.background=ac.bg;
+  document.getElementById('nav-avatar').style.color=ac.fg;
+
+  // 帳號（全部角色都顯示）
+  const usernameEl=document.getElementById('nav-username');
+  if(usernameEl) usernameEl.textContent=found.username;
+
+  // 組織名稱（org_owner 和 manager 才顯示，admin/coowner 不顯示）
+  const orgEl=document.getElementById('nav-org');
+  if(orgEl){
+    const showOrg=found.role==='org_owner'||found.role==='manager';
+    const orgName=showOrg&&found.org_id?(organizations.find(o=>o.id===found.org_id)?.name||''):'';
+    orgEl.textContent=orgName;
+    orgEl.style.display=orgName?'':'none';
+  }
   // hide manager menu for non-owners
   document.getElementById('nav-managers').style.display=isOwner()?'':'none';
   document.getElementById('nav-addr-mgr').style.display=isOwner()?'':'none';
@@ -1389,7 +1540,24 @@ function doLogout(){
   document.getElementById('login-pass').value='';
 }
 
-function isOwner(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='coowner'); }
+// ── 角色判斷 ──
+// owner     = admin（你，最高權限，看全部，管組織）
+// org_owner = 組織負責人（管自己組織的管理人）
+// coowner   = 副管理員（全功能，不能刪 admin）
+// manager   = 一般管理人（有限功能）
+
+function isSuperAdmin(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'); } // owner = 最高權限
+function isOrgOwner(){ return currentUser&&currentUser.role==='org_owner'; }
+// isOwner：可以進行大部分管理操作
+function isOwner(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='org_owner'||currentUser.role==='coowner'); }
+// isAdmin：可以看管理人頁面、地址管理、歷史租客
+function isAdmin(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='coowner'||currentUser.role==='org_owner'); }
+// getCurrentOrgId：owner/superadmin = null（看全部），其他人 = 自己的 org_id
+function getCurrentOrgId(){ 
+  if(!currentUser) return null;
+  if(isSuperAdmin()) return null;
+  return currentUser.org_id||null;
+}
 function isAdmin(){ return currentUser&&currentUser.role==='owner'; }
 
 // ── NAV ──
@@ -1402,11 +1570,12 @@ function closeSidebar(){
   document.getElementById('sidebar-overlay').classList.remove('show');
 }
 
-const PAGE_IDX={dashboard:0,rooms:1,tenants:2,history:3,handover:4,report:5,mgrrpt:6,managers:7,addrmgr:8,archive:9,settings:10};
+const PAGE_IDX={dashboard:0,rooms:1,tenants:2,history:3,handover:4,report:5,mgrrpt:6,managers:7,addrmgr:8,archive:9,orgs:10,settings:11};
 const MOBILE_TABS=['dashboard','rooms','tenants','history'];
 function goPage(id){
   if((id==='managers'||id==='addrmgr')&&!isOwner()){ toast('權限不足'); return; }
   if(id==='archive'&&!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  if(id==='orgs'&&!isSuperAdmin()){ toast('此功能僅 Super Admin 可使用'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   const navItems=document.querySelectorAll('.nav-item');
@@ -1433,17 +1602,26 @@ function getAddrNames(){ return ['未分類',...addresses.map(a=>a.name)]; }
 
 // 取得目前使用者可見的地址（管理人只能看自己負責的）
 function getVisibleAddrNames(){
-  if(!currentUser || isOwner()) return getAddrNames(); // admin/coowner 看全部
+  if(!currentUser) return [];
+  // 只有 admin（owner/superadmin）看全部地址
+  if(currentUser.role==='owner'||currentUser.role==='superadmin') return getAddrNames();
+  // 副管理員看全部
+  if(currentUser.role==='coowner') return getAddrNames();
   const uid = currentUser.id;
-  // 管理人：看有勾選自己的地址 + 未分類（如果未分類沒有任何管理人設定）
-  const assigned = addresses.filter(a=>(a.managers||[]).includes(uid)).map(a=>a.name);
-  // 如果沒有任何地址指派，讓管理人看到空的（避免混淆）
-  return assigned.length>0 ? assigned : [];
+  const orgId = getCurrentOrgId();
+  // org_owner 看自己 org 的地址（排除未分配的）
+  if(isOrgOwner()&&orgId) return addresses.filter(a=>a.org_id===orgId).map(a=>a.name);
+  // 一般管理人：只看被指派且同組織的地址
+  return addresses.filter(a=>(a.managers||[]).includes(uid)&&(a.org_id===currentUser?.org_id||!a.org_id)).map(a=>a.name);
 }
 
-// 過濾管理人可見的房間
+// 過濾可見房間
+// admin → 全部
+// org_owner → 自己 org 的所有房間
+// manager → 只有被指派地址的房間
 function getVisibleRooms(){
-  if(!currentUser || isOwner()) return rooms;
+  if(!currentUser) return [];
+  if(currentUser.role==='owner'||currentUser.role==='superadmin') return rooms; // admin 全部
   const visible = getVisibleAddrNames();
   return rooms.filter(r=>(visible).includes(r.addr||'未分類'));
 }
@@ -1461,7 +1639,18 @@ function promptNewAddr(){
   const name=prompt('輸入新地址名稱（例：台中北屯區XX路）');
   if(!name||!name.trim()) return;
   const n=name.trim();
-  if(!addresses.find(a=>a.name===n)){ addresses.push({name:n,managers:[]}); save(); }
+  if(!addresses.find(a=>a.name===n)){
+    // 建立者自動成為該地址的主要管理人（admin 除外，admin 不需要被指派）
+    const creatorId=(!isSuperAdmin()&&currentUser?.id)?currentUser.id:null;
+    addresses.push({
+      name:n,
+      managers:creatorId?[creatorId]:[], // 建立者自動加入管理人清單
+      elecType:'monthly', elecAcc:'', elecPrice:0,
+      org_id:getCurrentOrgId(),
+      primaryMgr:creatorId // 建立者自動是主要管理人
+    });
+    save();
+  }
   populateAddrSelect(n);
   document.getElementById('f-addr').value=n;
   renderAddrMgr();
@@ -1569,7 +1758,7 @@ function renderAll(){
   });
   const ds=document.getElementById('dash-sub'); if(ds) ds.textContent=ml+' 收款狀況';
   updateHistMonthDisplay(); renderHistAddrBar();
-  renderDashboard(); renderRooms(); renderTenants(); renderHistory(); renderReport(); renderManagers(); renderAddrMgr(); renderHandover(); renderArchive(); renderMgrRpt();
+  renderDashboard(); renderRooms(); renderTenants(); renderHistory(); renderReport(); renderManagers(); renderAddrMgr(); renderHandover(); renderArchive(); renderMgrRpt(); if(isSuperAdmin()&&document.getElementById('orgs-tbody')) renderOrgs();
   renderTenantAddrBar(); renderArchiveAddrBar();
   renderAddrBar(); renderAddrStats(); checkExpiryNotices(); checkOverdueRepairs();
   updateBadge();
@@ -1736,8 +1925,10 @@ function renderTenants(){
       }
     }
     return `<tr>
-      <td><b>${r.name}</b></td>
-      <td>${r.tenant||'—'}</td>
+      <td style="white-space:nowrap;background:var(--surface);">
+        <div style="font-weight:700;font-size:13px;">${r.name}</div>
+        <div style="font-size:11px;color:var(--text2);">${r.tenant||'—'}</div>
+      </td>
       <td>${r.phone||'—'}</td>
       <td style="color:var(--red-dk);font-size:12px;">${r.emergency||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
@@ -1855,8 +2046,10 @@ function renderHistory(){
     const isPrepay=r.elecType==='prepay';
     // 主要租金行
     const rentRow=`<tr style="${isVacant?'opacity:.55':''}">
-      <td><b>${r.name}</b></td>
-      <td>${r.tenant||'—'}</td>
+      <td style="white-space:nowrap;background:var(--surface);">
+        <div style="font-weight:700;font-size:13px;">${r.name}</div>
+        <div style="font-size:11px;color:var(--text2);">${r.tenant||'—'}</div>
+      </td>
       <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
       <td class="mono" style="font-size:11px">${r.acc||'—'}</td>
       <td class="mono">${isVacant?'—':getActualRentLabel(r,pay)}</td>
@@ -2114,9 +2307,18 @@ function renderReport(){
 // ── MANAGERS ──
 function renderManagers(){
   const tbody=document.getElementById('mgr-tbody'); if(!tbody) return;
-  const roleLabel={owner:'Admin',coowner:'副管理員',manager:'管理人'};
-  const roleBadge={owner:'b-owner',coowner:'b-coowner',manager:'b-admin'};
-  const all = isAdmin() ? [DEFAULT_OWNER,...managers] : [currentUser].filter(Boolean);
+  const roleLabel={superadmin:'Admin',owner:'Admin',coowner:'副管理員',manager:'管理人',org_owner:'組織負責人'};
+  const roleBadge={superadmin:'b-owner',owner:'b-owner',coowner:'b-coowner',manager:'b-admin',org_owner:'b-coowner'};
+  // superadmin 看全部；org_owner 看自己 org（包含自己）；其他只看自己
+  let all;
+  if(isSuperAdmin()){
+    all = [DEFAULT_OWNER,...managers];
+  } else if(isOrgOwner()){
+    // 看自己 org 下所有帳號（含自己，排除 superadmin/owner）
+    all = managers.filter(m=>m.org_id===currentUser.org_id);
+  } else {
+    all = [currentUser].filter(Boolean);
+  }
   tbody.innerHTML=all.map(m=>{
     const isSuspended=m.suspended===true;
     const roleText=isSuspended?`${roleLabel[m.role]||'管理人'} ⛔停權`:(roleLabel[m.role]||'管理人');
@@ -2128,16 +2330,20 @@ function renderManagers(){
     const managedCount=rooms.filter(r=>assignedAddrs.includes(r.addr||'未分類')).length;
     const limitStr=roomLimit?`${managedCount}/${roomLimit} 間`:'無限制';
     const limitColor=roomLimit&&managedCount>=roomLimit?'var(--red-dk)':'var(--text3)';
+    const orgName = m.org_id ? (organizations.find(o=>o.id===m.org_id)?.name||m.org_id) : (isSuperAdmin()?'<span style="color:var(--text3)">Super Admin</span>':'—');
     return `<tr style="${isSuspended?'opacity:.6':''}">
-      <td><b>${m.name}</b></td>
+      <td><b>${m.name}</b><div style="font-size:11px;color:var(--text3);">${orgName}</div></td>
       <td class="mono" style="font-size:12px">${m.username}</td>
       <td><span class="badge ${badgeClass}">${roleText}</span></td>
       <td style="font-size:12px;color:${limitColor};font-family:'DM Mono',monospace;">${limitStr}</td>
       <td style="font-size:12px;color:var(--text3)">${m.createdAt||'系統預設'}</td>
       <td style="display:flex;gap:5px;flex-wrap:wrap;">
-        ${isAdmin()&&m.role!=='owner'?`
+        ${isSuperAdmin()&&m.role!=='owner'&&m.role!=='superadmin'?`
           <button class="btn btn-sm" onclick="openRoomLimitModal('${m.id}')">房間上限</button>
           <button class="btn btn-sm ${isSuspended?'btn-success':''}" onclick="toggleSuspend('${m.id}')">${isSuspended?'解除停權':'停權'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
+        `:''}
+        ${isOrgOwner()&&m.org_id===currentUser.org_id&&m.role==='manager'?`
           <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
         `:''}
         <button class="btn btn-sm" onclick="openChangePwModal('${m.id}')">改密碼</button>
@@ -2145,7 +2351,10 @@ function renderManagers(){
     </tr>`;
   }).join('');
   const addBtn=document.querySelector('#page-managers .btn-primary');
-  if(addBtn) addBtn.style.display=isAdmin()?'':'none';
+  if(addBtn) addBtn.style.display=(isSuperAdmin()||isOrgOwner())?'':'none';
+  // 管理人帳號頁標題
+  const pgTitle=document.querySelector('#page-managers .pg-title');
+  if(pgTitle&&isOrgOwner()&&currentOrg) pgTitle.textContent=`${currentOrg.name} — 管理人帳號`;
 }
 
 function setMgrRole(role){
@@ -2158,6 +2367,9 @@ function openManagerModal(){
   document.getElementById('mg-user').value='';
   document.getElementById('mg-pass').value='';
   setMgrRole('manager');
+  // org_owner 只能建管理人，隱藏副管理員選項
+  const coownerOpt=document.getElementById('role-opt-coowner');
+  if(coownerOpt) coownerOpt.style.display=isOrgOwner()?'none':'';
   document.getElementById('mgr-modal').style.display='flex';
 }
 
@@ -2169,10 +2381,179 @@ function saveManager(){
   if(!name||!username||password.length<6){ toast('請填寫完整資料，密碼至少6字元'); return; }
   if(getUsers().find(u=>u.username===username)){ toast('此帳號已存在'); return; }
   const isCoowner=document.getElementById('role-opt-coowner').style.border.includes('2px');
-  const role=isCoowner?'coowner':'manager';
-  managers.push({id:'m'+Date.now(),name,username,password,role,createdAt:new Date().toLocaleDateString('zh-TW')});
+  // org_owner 只能建 manager/coowner，不能建 org_owner/superadmin
+  let role=isCoowner?'coowner':'manager';
+  if(isOrgOwner()&&(role==='org_owner'||role==='owner')) role='manager';
+  // 自動帶入 org_id
+  const orgId=isSuperAdmin()?null:(currentUser?.org_id||null);
+  managers.push({id:'m'+Date.now(),name,username,password,role,org_id:orgId,createdAt:new Date().toLocaleDateString('zh-TW')});
   save(); closeModal('mgr-modal'); renderManagers(); toast(isCoowner?'副管理員已新增':'管理人已新增');
 }
+// ── 組織管理 ──
+let editingOrgId = null;
+let currentPayType = 'manual';
+
+function setOrgPay(type){
+  currentPayType = type;
+  ['manual','bank','ecpay'].forEach(t=>{
+    const el=document.getElementById('pay-opt-'+t);
+    if(el) el.style.border=t===type?'2px solid var(--text)':'1px solid var(--border)';
+  });
+  document.getElementById('org-bank-fields').style.display=type==='bank'?'':'none';
+  document.getElementById('org-ecpay-fields').style.display=type==='ecpay'?'':'none';
+}
+
+function openOrgModal(id){
+  editingOrgId = id||null;
+  document.getElementById('org-modal-title').textContent=id?'編輯組織':'新增組織';
+  document.getElementById('org-delete-btn').style.display=id?'':'none';
+  document.getElementById('org-editing-id').value=id||'';
+
+  // 填充負責人下拉選單（所有非 owner 帳號）
+  const sel=document.getElementById('org-owner-select');
+  sel.innerHTML='<option value="">選擇帳號...</option>'+
+    managers.filter(m=>m.role!=='owner'&&m.role!=='superadmin').map(m=>
+      `<option value="${m.id}">${m.name}（${m.username}）${m.org_id?'— 已屬 '+(organizations.find(o=>o.id===m.org_id)?.name||'某組織'):''}</option>`
+    ).join('');
+
+  if(id){
+    const o=organizations.find(x=>x.id===id);
+    if(!o) return;
+    document.getElementById('org-name').value=o.name;
+    setOrgPay(o.paymentType||'manual');
+    document.getElementById('org-bank-name').value=o.bankName||'';
+    document.getElementById('org-bank-acc').value=o.bankAccount||'';
+    document.getElementById('org-bank-note').value=o.bankNote||'';
+    document.getElementById('org-ecpay-id').value=o.ecpayMerchantId||'';
+    renderOrgOwnerList(id);
+  } else {
+    document.getElementById('org-name').value='';
+    setOrgPay('manual');
+    ['org-bank-name','org-bank-acc','org-bank-note','org-ecpay-id'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('org-owner-list').innerHTML='';
+  }
+  document.getElementById('org-modal').style.display='flex';
+}
+
+function renderOrgOwnerList(orgId){
+  const owners=managers.filter(m=>m.org_id===orgId&&m.role==='org_owner');
+  const ownerList=document.getElementById('org-owner-list');
+  if(!owners.length){
+    ownerList.innerHTML='<div style="font-size:12px;color:var(--text3);">尚未指定負責人</div>';
+    return;
+  }
+  ownerList.innerHTML=owners.map(m=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface2);border-radius:6px;">
+      <div>
+        <span style="font-size:13px;font-weight:500;">${m.name}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:6px;">${m.username}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="badge b-coowner">負責人</span>
+        <button class="btn btn-sm btn-danger" onclick="removeOrgOwner('${m.id}')">移除</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addOrgOwnerFromSelect(){
+  const sel=document.getElementById('org-owner-select');
+  const mgrId=sel.value;
+  if(!mgrId){ toast('請選擇帳號'); return; }
+  const m=managers.find(x=>x.id===mgrId);
+  if(!m){ toast('找不到帳號'); return; }
+  const orgId=editingOrgId;
+  if(!orgId){ toast('請先儲存組織再指定負責人'); return; }
+  // 更新角色和 org_id
+  m.role='org_owner';
+  m.org_id=orgId;
+  // 直接寫入 Supabase 確保存進去
+  await db.from('test_managers').update({role:'org_owner', org_id:orgId}).eq('id', mgrId);
+  await save();
+  renderOrgOwnerList(orgId); renderManagers();
+  // 重新載入下拉選單
+  const newSel=document.getElementById('org-owner-select');
+  if(newSel) newSel.value='';
+  toast(`已將 ${m.name} 設為此組織負責人`);
+}
+
+async function removeOrgOwner(mgrId){
+  const m=managers.find(x=>x.id===mgrId);
+  if(!m) return;
+  if(!confirm(`確定移除「${m.name}」的負責人身份？帳號不會刪除，角色會改為一般管理人。`)) return;
+  m.role='manager';
+  m.org_id=editingOrgId;
+  await db.from('test_managers').update({role:'manager', org_id:editingOrgId}).eq('id', mgrId);
+  await save();
+  renderOrgOwnerList(editingOrgId); renderManagers();
+  toast(`已移除 ${m.name} 的負責人身份`);
+}
+
+function saveOrg(){
+  const name=document.getElementById('org-name').value.trim();
+  if(!name){ toast('請填寫組織名稱'); return; }
+  if(editingOrgId){
+    const o=organizations.find(x=>x.id===editingOrgId);
+    if(!o) return;
+    o.name=name; o.paymentType=currentPayType;
+    o.bankName=document.getElementById('org-bank-name').value.trim();
+    o.bankAccount=document.getElementById('org-bank-acc').value.trim();
+    o.bankNote=document.getElementById('org-bank-note').value.trim();
+    o.ecpayMerchantId=document.getElementById('org-ecpay-id').value.trim();
+  } else {
+    organizations.push({
+      id:'org'+Date.now(), name, paymentType:currentPayType,
+      bankName:document.getElementById('org-bank-name').value.trim(),
+      bankAccount:document.getElementById('org-bank-acc').value.trim(),
+      bankNote:document.getElementById('org-bank-note').value.trim(),
+      ecpayMerchantId:document.getElementById('org-ecpay-id').value.trim(),
+      createdAt:new Date().toLocaleDateString('zh-TW')
+    });
+  }
+  save(); closeModal('org-modal'); renderOrgs(); toast(editingOrgId?'已更新組織':'已新增組織');
+}
+
+function deleteOrg(){
+  if(!editingOrgId) return;
+  const o=organizations.find(x=>x.id===editingOrgId);
+  if(!o) return;
+  const mgrCount=managers.filter(m=>m.org_id===editingOrgId).length;
+  if(mgrCount>0){ toast(`此組織下還有 ${mgrCount} 個帳號，請先移除`); return; }
+  if(!confirm(`確定刪除「${o.name}」？`)) return;
+  organizations=organizations.filter(x=>x.id!==editingOrgId);
+  save(); closeModal('org-modal'); renderOrgs(); toast('已刪除組織');
+}
+
+async function deleteOrgFromDB(id){
+  await db.from('test_organizations').delete().eq('id',id);
+}
+
+function renderOrgs(){
+  const tbody=document.getElementById('orgs-tbody'); if(!tbody) return;
+  if(!organizations.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem">尚未建立任何組織</td></tr>';
+    return;
+  }
+  const payLabel={manual:'手動對帳',bank:'銀行帳號',ecpay:'綠界'};
+  tbody.innerHTML=organizations.map(o=>{
+    const mgrCount=managers.filter(m=>m.org_id===o.id).length;
+    const owners=managers.filter(m=>m.org_id===o.id&&m.role==='org_owner');
+    let payInfo='—';
+    if(o.paymentType==='bank'&&o.bankAccount) payInfo=`${o.bankName||''} ${o.bankAccount}`;
+    if(o.paymentType==='ecpay'&&o.ecpayMerchantId) payInfo=`MID: ${o.ecpayMerchantId}`;
+    return `<tr>
+      <td><b>${o.name}</b>${owners.length?`<div style="font-size:11px;color:var(--text3);">負責人：${owners.map(m=>m.name).join('、')}</div>`:'<div style="font-size:11px;color:var(--red-dk);">尚無負責人</div>'}</td>
+      <td><span class="badge b-admin">${payLabel[o.paymentType]||'手動'}</span></td>
+      <td style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);">${payInfo}</td>
+      <td style="font-size:13px;">${mgrCount} 個帳號</td>
+      <td>
+        <button class="btn btn-sm" onclick="openOrgModal('${o.id}')">設定 / 負責人</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// openAddOrgOwner replaced by addOrgOwnerFromSelect
+
 // ── 房間數上限 ──
 function openRoomLimitModal(id){
   if(!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
@@ -2313,12 +2694,16 @@ let editingAddrName = null;
 
 function renderAddrMgr(){
   const tbody = document.getElementById('addr-mgr-tbody'); if(!tbody) return;
-  const allMgrs = managers; // 不含 DEFAULT_OWNER（admin 永遠有全部權限）
-  if(!addresses.length){
+  // 只有 admin（owner）看全部地址，其他人只看自己 org
+  const orgId = getCurrentOrgId();
+  const visibleAddrs = (currentUser?.role==='owner'||currentUser?.role==='superadmin') ? addresses :
+    isOrgOwner() ? addresses.filter(a=>a.org_id===orgId) :
+    addresses.filter(a=>(a.managers||[]).includes(currentUser?.id));
+  if(!visibleAddrs.length){
     tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem">尚未新增地址，點右上角「+ 新增地址」</td></tr>';
     return;
   }
-  tbody.innerHTML = addresses.map(a=>{
+  tbody.innerHTML = visibleAddrs.map(a=>{
     const roomCount = rooms.filter(r=>r.addr===a.name).length;
     const mgrNames = (a.managers||[]).map(uid=>{
       const m = managers.find(x=>x.id===uid);
@@ -2326,8 +2711,10 @@ function renderAddrMgr(){
     }).filter(Boolean);
     const elecLabel=a.elecType==='prepay'?`⚡儲值${a.elecAcc?'<br><span style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace">'+a.elecAcc+'</span>':''}${a.elecPrice?'<span style="font-size:10px;color:var(--amber-dk);"> $'+a.elecPrice+'/度</span>':''}`:
       '<span style="color:var(--text3);">月結</span>';
+    const orgName=a.org_id?(organizations.find(o=>o.id===a.org_id)?.name||'未知組織'):'<span style="color:var(--text3)">未分配</span>';
     return `<tr>
       <td><b>${a.name}</b></td>
+      <td style="font-size:12px;color:var(--text2);">${orgName}</td>
       <td style="font-size:13px;">${roomCount} 間</td>
       <td style="font-size:12px;">${elecLabel}</td>
       <td style="font-size:12px;color:var(--text2);">${mgrNames.length>0?mgrNames.join('、'):'<span style="color:var(--text3)">未指派</span>'}</td>
@@ -2345,39 +2732,98 @@ function setAddrElec(type){
 
 function openAddrMgrModal(name){
   editingAddrName = name;
-  const a = addresses.find(x=>x.name===name)||{name,managers:[]};
+  const a = addresses.find(x=>x.name===name)||{name,managers:[],primaryMgr:null,org_id:null};
   document.getElementById('addr-mgr-modal-title').textContent = `${name} — 設定`;
   document.getElementById('addr-edit-name').value = name;
-  // 設定電費類型
   setAddrElec(a.elecType||'monthly');
   document.getElementById('addr-elec-acc').value=a.elecAcc||'';
   document.getElementById('addr-elec-price').value=a.elecPrice||'';
+
+  const isAdminUser = currentUser?.role==='owner'||currentUser?.role==='superadmin';
+
+  // 組織欄位
+  const orgSel=document.getElementById('addr-edit-org');
+  if(orgSel){
+    if(isAdminUser){
+      orgSel.innerHTML='<option value="">未分配（admin 可見）</option>'+
+        organizations.map(o=>`<option value="${o.id}" ${a.org_id===o.id?'selected':''}>${o.name}</option>`).join('');
+      orgSel.disabled=false;
+      orgSel.style.opacity='1';
+    } else {
+      const myOrg=organizations.find(o=>o.id===currentUser?.org_id);
+      orgSel.innerHTML=`<option value="${currentUser?.org_id||''}">${myOrg?.name||'我的組織'}</option>`;
+      orgSel.disabled=true;
+      orgSel.style.opacity='.6';
+    }
+  }
+
   const checklist = document.getElementById('addr-mgr-checklist');
-  const allMgrs = managers.filter(m=>m.role==='manager'||m.role==='coowner');
+  const currentOrgId = getCurrentOrgId();
+  // admin 和 org_owner 都可以編輯（但 org_owner 只能選同組織帳號）
+  const canEdit = isAdminUser || isOrgOwner();
+  let allMgrs = managers.filter(m=>m.role==='manager'||m.role==='coowner'||m.role==='org_owner');
+  // 非 admin：只顯示同 org 的帳號
+  if(!isAdminUser && currentOrgId) allMgrs = allMgrs.filter(m=>m.org_id===currentOrgId);
+  const primaryId = a.primaryMgr||(a.managers&&a.managers[0])||null;
   if(!allMgrs.length){
     checklist.innerHTML='<div style="font-size:13px;color:var(--text3);">尚未建立管理人帳號</div>';
   } else {
     checklist.innerHTML = allMgrs.map(m=>{
       const checked = (a.managers||[]).includes(m.id);
-      const roleLabel = m.role==='coowner'?'副管理員':'管理人';
-      return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:${checked?'var(--blue-bg)':'var(--surface)'};transition:all .12s;">
-        <input type="checkbox" value="${m.id}" ${checked?'checked':''} onchange="toggleAddrMgr(this)" style="width:15px;height:15px;accent-color:var(--blue);flex-shrink:0;">
-        <div>
-          <div style="font-size:13px;font-weight:500;">${m.name}</div>
+      const isPrimary = m.id===primaryId;
+      const roleLabel = m.role==='coowner'?'副管理員':m.role==='org_owner'?'組織負責人':'管理人';
+      return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid ${isPrimary?'var(--amber)':'var(--border)'};border-radius:8px;cursor:${canEdit?'pointer':'default'};background:${checked?'var(--blue-bg)':'var(--surface)'};transition:all .12s;">
+        <input type="checkbox" value="${m.id}" ${checked?'checked':''} ${!canEdit?'disabled':''} onchange="${canEdit?'toggleAddrMgr(this)':''}" style="width:15px;height:15px;accent-color:var(--blue);flex-shrink:0;cursor:${canEdit?'pointer':'not-allowed'}">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;">${m.name} ${isPrimary?'<span style="font-size:10px;background:var(--amber-bg);color:var(--amber-dk);padding:1px 6px;border-radius:20px;">主要</span>':''}</div>
           <div style="font-size:11px;color:var(--text3);">${m.username} · ${roleLabel}</div>
         </div>
+        ${canEdit&&checked&&!isPrimary?`<button type="button" class="set-primary-btn btn btn-sm" onclick="setPrimaryMgr('${m.id}',event)" style="font-size:10px;padding:2px 7px;white-space:nowrap;">設為主要</button>`:''}
       </label>`;
     }).join('');
   }
+  const addrSaveBtn=document.querySelector('#addr-mgr-modal .btn-primary');
+  if(addrSaveBtn) addrSaveBtn.style.display=canEdit?'':'none';
+  const addrCancelBtn=document.querySelector('#addr-mgr-modal .modal-ft .btn:first-child');
+  if(addrCancelBtn) addrCancelBtn.textContent=canEdit?'取消':'關閉';
   document.getElementById('addr-mgr-modal').style.display='flex';
+}
+
+function setPrimaryMgr(mgrId, e){
+  e.preventDefault(); e.stopPropagation();
+  const a = addresses.find(x=>x.name===editingAddrName); if(!a) return;
+  a.primaryMgr = mgrId;
+  save(); openAddrMgrModal(editingAddrName); toast('已設定主要管理人');
 }
 
 function toggleAddrMgr(cb){
   const lbl = cb.closest('label');
   if(lbl) lbl.style.background = cb.checked ? 'var(--blue-bg)' : 'var(--surface)';
+  // 即時更新「設為主要」按鈕的顯示
+  const a = addresses.find(x=>x.name===editingAddrName);
+  const primaryId = a?.primaryMgr||(a?.managers&&a?.managers[0])||null;
+  // 顯示/隱藏「設為主要」按鈕（只對已勾選且非主要的顯示）
+  const mgrId = cb.value;
+  const existingBtn = lbl?.querySelector('.set-primary-btn');
+  if(cb.checked && mgrId !== primaryId){
+    if(!existingBtn){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-sm set-primary-btn';
+      btn.style.cssText = 'font-size:10px;padding:2px 7px;white-space:nowrap;';
+      btn.textContent = '設為主要';
+      btn.onclick = (e) => { setPrimaryMgr(mgrId, e); };
+      lbl?.appendChild(btn);
+    }
+  } else if(existingBtn){
+    existingBtn.remove();
+  }
 }
 
 function saveAddrMgr(){
+  const isAdminUser2 = currentUser?.role==='owner'||currentUser?.role==='superadmin';
+  const canEdit2 = isAdminUser2 || isOrgOwner();
+  if(!canEdit2){ toast('權限不足'); return; }
   const newName = document.getElementById('addr-edit-name').value.trim();
   if(!newName){ toast('地址名稱不可為空'); return; }
   const a = addresses.find(x=>x.name===editingAddrName);
@@ -2387,7 +2833,6 @@ function saveAddrMgr(){
     rooms.forEach(r=>{ if(r.addr===editingAddrName) r.addr=newName; });
     a.name = newName;
   }
-  // 儲存電費類型
   const isMonthly = document.getElementById('addr-elec-monthly').style.border.includes('2px');
   a.elecType = isMonthly?'monthly':'prepay';
   if(!isMonthly){
@@ -2396,6 +2841,11 @@ function saveAddrMgr(){
   }
   const checked = [...document.querySelectorAll('#addr-mgr-checklist input[type=checkbox]:checked')].map(cb=>cb.value);
   a.managers = checked;
+  if(!a.primaryMgr && checked.length) a.primaryMgr = checked[0];
+  // 儲存組織
+  const orgSel=document.getElementById('addr-edit-org');
+  if(orgSel&&!orgSel.disabled) a.org_id=orgSel.value||null;
+  else if(isOrgOwner()&&!a.org_id) a.org_id=currentUser.org_id||null; // org_owner 自動帶入
   save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
 }
 
