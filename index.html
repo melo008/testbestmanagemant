@@ -531,10 +531,13 @@ tr:hover td{background:rgba(0,0,0,.015);}
     <div class="page" id="page-history">
       <div class="pg-header">
         <div style="display:flex;align-items:center;gap:10px;"><button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button><div><div class="pg-title">收款紀錄</div><div class="pg-sub">各月份付款記錄</div></div></div>
-        <div class="month-nav">
-          <button class="mnth-btn" onclick="histPrevMonth()">‹</button>
-          <span class="month-disp" id="hist-month-disp"></span>
-          <button class="mnth-btn" onclick="histNextMonth()">›</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm" onclick="openQuickMatch()">🔍 快速對帳</button>
+          <div class="month-nav">
+            <button class="mnth-btn" onclick="histPrevMonth()">‹</button>
+            <span class="month-disp" id="hist-month-disp"></span>
+            <button class="mnth-btn" onclick="histNextMonth()">›</button>
+          </div>
         </div>
       </div>
       <div class="addr-bar" id="hist-addr-bar" style="margin-bottom:1rem;"></div>
@@ -609,10 +612,13 @@ tr:hover td{background:rgba(0,0,0,.015);}
           <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
           <div><div class="pg-title">管理人報表</div><div class="pg-sub">選擇地址查看出租狀況與支出明細</div></div>
         </div>
-        <div class="month-nav">
-          <button class="mnth-btn" onclick="prevMonth()">‹</button>
-          <span class="month-disp" id="mgrrpt-month"></span>
-          <button class="mnth-btn" onclick="nextMonth()">›</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm" onclick="exportMgrRpt()">⬇ 匯出報表</button>
+          <div class="month-nav">
+            <button class="mnth-btn" onclick="prevMonth()">‹</button>
+            <span class="month-disp" id="mgrrpt-month"></span>
+            <button class="mnth-btn" onclick="nextMonth()">›</button>
+          </div>
         </div>
       </div>
 
@@ -922,6 +928,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;" id="f-expected">$0</span>
       </div>
       <div class="ff full"><label>虛擬帳號（向綠界申請後填入）</label><input type="text" id="f-acc" placeholder="例：809001xxxxxxxxx"></div>
+      <div class="ff"><label>租客匯款帳號後五碼</label><input type="text" id="f-bank-last5" placeholder="例：12345" maxlength="5"></div>
       <div class="ff full"><label>備註</label><textarea id="f-note" placeholder="其他備註…" style="min-height:50px;"></textarea></div>
     </div>
     <div class="modal-ft">
@@ -934,11 +941,11 @@ tr:hover td{background:rgba(0,0,0,.015);}
 <!-- MANAGER MODAL -->
 <div class="modal-ov" id="mgr-modal" style="display:none;">
   <div class="modal">
-    <div class="modal-hd"><span class="modal-title">新增帳號</span><button class="modal-close" onclick="closeModal('mgr-modal')">×</button></div>
+    <div class="modal-hd"><span class="modal-title" id="mgr-modal-title">新增帳號</span><button class="modal-close" onclick="closeModal('mgr-modal')">×</button></div>
     <div class="fg">
       <div class="ff"><label>姓名 *</label><input type="text" id="mg-name" placeholder="例：王小明"></div>
       <div class="ff"><label>帳號 *</label><input type="text" id="mg-user" placeholder="例：wangxm"></div>
-      <div class="ff full"><label>密碼 *</label><input type="password" id="mg-pass" placeholder="至少 6 個字元"></div>
+      <div class="ff full"><label>密碼 *（留空則不更改）</label><input type="password" id="mg-pass" placeholder="至少 6 個字元"></div>
       <div class="ff full"><label>角色</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px;">
           <div id="role-opt-coowner" onclick="setMgrRole('coowner')" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;">
@@ -951,10 +958,21 @@ tr:hover td{background:rgba(0,0,0,.015);}
           </div>
         </div>
       </div>
+      <div class="ff full" id="perm-section">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:8px;">功能權限</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canAdjust"> 改帳功能</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canExport"> 匯出 CSV</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canViewReport"> 月份報表</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canViewMgrRpt" checked> 管理人報表</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canQuickMatch"> 快速對帳</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canDeleteRoom"> 刪除房間</label>
+        </div>
+      </div>
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="closeModal('mgr-modal')">取消</button>
-      <button class="btn btn-primary" onclick="saveManager()">新增</button>
+      <button class="btn btn-primary" onclick="saveManager()" id="mgr-modal-save-btn">新增</button>
     </div>
   </div>
 </div>
@@ -1040,6 +1058,46 @@ tr:hover td{background:rgba(0,0,0,.015);}
     <div class="modal-ft">
       <button class="btn" onclick="closeModal('export-modal')">取消</button>
       <button class="btn btn-primary" onclick="doExportCSV()">匯出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 快速對帳 Modal -->
+<div class="modal-ov" id="quick-match-modal" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-hd">
+      <span class="modal-title">快速對帳</span>
+      <button class="modal-close" onclick="closeModal('quick-match-modal')">×</button>
+    </div>
+    <div style="padding:1rem 1.25rem;">
+      <div class="modal-info">輸入銀行入帳通知的資訊，系統自動找到對應租客並標記已付款。</div>
+      <div class="fg">
+        <div class="ff"><label>帳號後五碼</label><input type="text" id="qm-last5" placeholder="例：12345" maxlength="5" oninput="quickMatchSearch()"></div>
+        <div class="ff"><label>入帳金額（元）</label><input type="number" id="qm-amount" placeholder="例：9000" oninput="quickMatchSearch()"></div>
+      </div>
+      <div id="qm-result" style="margin-top:12px;"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('quick-match-modal')">取消</button>
+      <button class="btn btn-primary" id="qm-confirm-btn" onclick="quickMatchConfirm()" style="display:none;">確認已付款</button>
+    </div>
+  </div>
+</div>
+
+<!-- 權限設定 Modal -->
+<div class="modal-ov" id="perm-modal" style="display:none;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-hd">
+      <span class="modal-title" id="perm-modal-title">設定權限</span>
+      <button class="modal-close" onclick="closeModal('perm-modal')">×</button>
+    </div>
+    <div style="padding:1rem 1.25rem;">
+      <div class="modal-info" id="perm-modal-info" style="margin-bottom:12px;"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="perm-modal-list"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('perm-modal')">取消</button>
+      <button class="btn btn-primary" onclick="savePermissions()">儲存</button>
     </div>
   </div>
 </div>
@@ -1290,7 +1348,8 @@ async function save(){
       await db.from('test_managers').upsert(managers.map(m=>({
         id:m.id, name:m.name, username:m.username, password:m.password,
         role:m.role||'manager', suspended:m.suspended||false,
-        org_id:m.org_id||null, room_limit:m.roomLimit||null
+        org_id:m.org_id||null, room_limit:m.roomLimit||null,
+        permissions:m.permissions||{}
       })));
     }
     // 儲存組織
@@ -1384,6 +1443,7 @@ async function load(){
       id:m.id, name:m.name, username:m.username, password:m.password,
       role:m.role||'manager', suspended:m.suspended||false,
       org_id:m.org_id||null, roomLimit:m.room_limit||null,
+      permissions:m.permissions||{},
       createdAt:m.created_at?new Date(m.created_at).toLocaleDateString('zh-TW'):''
     }));
     // Addresses
@@ -1430,14 +1490,20 @@ function showLoading(show){
 async function saveMgrExpenses(){
   try{
     const rows=[];
-    Object.keys(mgrExpenses).forEach(mk=>{
-      Object.keys(mgrExpenses[mk]||{}).forEach(ak=>{
-        rows.push({
-          month_key:mk, addr_key:ak,
-          expenses:mgrExpenses[mk][ak]||{},
-          custom_expenses:customExpenses[mk+':'+ak]||[],
-          updated_at:new Date().toISOString()
-        });
+    // mgrExpenses 的 key 是 flat 格式："YYYY-MM__addr"
+    Object.keys(mgrExpenses).forEach(flatKey=>{
+      const parts=flatKey.split('__');
+      if(parts.length<2) return;
+      const mk=parts[0];
+      const ak=parts.slice(1).join('__'); // addr 可能含 __
+      const expData=mgrExpenses[flatKey];
+      if(!expData||typeof expData!=='object') return;
+      const ck=flatKey.replace('__',':');
+      rows.push({
+        month_key:mk, addr_key:ak,
+        expenses:expData,
+        custom_expenses:customExpenses[ck]||[],
+        updated_at:new Date().toISOString()
       });
     });
     if(rows.length) await db.from('test_mgr_expenses').upsert(rows,{onConflict:'month_key,addr_key'});
@@ -1450,9 +1516,10 @@ async function loadMgrExpenses(){
       mgrExpenses={};
       customExpenses={};
       data.forEach(row=>{
-        if(!mgrExpenses[row.month_key]) mgrExpenses[row.month_key]={};
-        mgrExpenses[row.month_key][row.addr_key]=row.expenses||{};
-        customExpenses[row.month_key+':'+row.addr_key]=row.custom_expenses||[];
+        // 存成 flat key 格式
+        const flatKey=`${row.month_key}__${row.addr_key}`;
+        mgrExpenses[flatKey]=row.expenses||{};
+        customExpenses[flatKey.replace('__',':')]=row.custom_expenses||[];
       });
     }
   }catch(e){ console.error('loadMgrExpenses error:',e); }
@@ -1505,6 +1572,15 @@ function doLogin(){
   };
   const ac=avatarColors[found.role]||avatarColors.manager;
   document.getElementById('nav-name').textContent=found.name;
+  // 套用功能權限到側邊欄
+  setTimeout(()=>{
+    const reportNav=document.querySelector('[onclick*="report"]');
+    const mgrrptNav=document.querySelector('[onclick*="mgrrpt"]');
+    const exportNav=document.querySelector('[onclick*="openExportModal"]');
+    if(reportNav) reportNav.style.display=hasPerm('canViewReport')?'':'none';
+    if(mgrrptNav) mgrrptNav.style.display=hasPerm('canViewMgrRpt')?'':'none';
+    if(exportNav) exportNav.style.display=hasPerm('canExport')?'':'none';
+  },100);
   document.getElementById('nav-role').textContent=roleLabels[found.role]||'管理人';
   document.getElementById('nav-avatar').textContent=found.name[0];
   document.getElementById('nav-avatar').style.background=ac.bg;
@@ -1677,14 +1753,21 @@ function autoFillDeposit(){
 
 function populateAddrSelect(currentVal){
   const sel=document.getElementById('f-addr'); if(!sel) return;
-  // 新增房間：不顯示未分類；編輯房間：如果原本是未分類就顯示
   const isEditing = !!editingRoomId;
-  let addrList = isOwner() ? getAddrNames() : getVisibleAddrNames().length>0 ? ['未分類',...getVisibleAddrNames().filter(a=>a!=='未分類')] : getAddrNames();
+  // 取得可選的地址清單
+  // admin → 所有地址；org_owner → 自己 org 的地址；manager → 被指派的地址
+  let addrList;
+  if(currentUser?.role==='owner'||currentUser?.role==='superadmin'){
+    addrList = getAddrNames();
+  } else {
+    addrList = getVisibleAddrNames();
+  }
+  // 新增房間：不顯示未分類
   if(!isEditing) addrList = addrList.filter(a=>a!=='未分類');
   sel.innerHTML=addrList.map(a=>`<option value="${a}"${a===currentVal?' selected':''}>${a}</option>`).join('');
-  if(!currentVal&&!isOwner()){
-    const firstAddr=getVisibleAddrNames().find(a=>a!=='未分類');
-    if(firstAddr) sel.value=firstAddr;
+  // 非 admin：預設選第一個可用地址
+  if(!currentVal&&addrList.length>0&&currentUser?.role!=='owner'&&currentUser?.role!=='superadmin'){
+    sel.value=addrList[0];
   }
 }
 
@@ -2233,13 +2316,16 @@ function renderReport(){
 
   // 報表表格
   const tbody=document.getElementById('rpt-tbody'); if(!tbody) return;
-  // 本月已歸檔租客（只顯示本月退租的，即 checkout 在本報表月份）
+  // 本月已歸檔租客（只顯示本月退租的，且只顯示自己可見地址的）
+  const visibleAddrNames=getVisibleAddrNames();
   const archivedThisView=(tenantArchive||[]).filter(a=>{
+    // 只顯示自己組織可見地址的歸檔租客
+    const isAdminUser2=currentUser?.role==='owner'||currentUser?.role==='superadmin';
+    if(!isAdminUser2&&!visibleAddrNames.includes(a.addr||'未分類')) return false;
     if(activeRptAddr!=='all'&&(a.addr||'未分類')!==activeRptAddr) return false;
     if(!a.checkout) return false;
     const d=new Date(a.checkout);
     if(isNaN(d)) return false;
-    // 退租日在本月
     return d.getFullYear()===ry && d.getMonth()+1===rm;
   });
   // 合併現有房間和已歸檔租客的報表行
@@ -2347,6 +2433,7 @@ function renderManagers(){
           <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
         `:''}
         <button class="btn btn-sm" onclick="openChangePwModal('${m.id}')">改密碼</button>
+        ${isSuperAdmin()&&m.role!=='owner'&&m.role!=='superadmin'?`<button class="btn btn-sm" onclick="openPermModal('${m.id}')">權限</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -2362,18 +2449,36 @@ function setMgrRole(role){
   document.getElementById('role-opt-manager').style.border=role==='manager'?'2px solid var(--text)':'1px solid var(--border)';
 }
 
-function openManagerModal(){
-  document.getElementById('mg-name').value='';
-  document.getElementById('mg-user').value='';
+function openManagerModal(editId){
+  editingMgrId=editId||null;
+  const m=editId?managers.find(x=>x.id===editId):null;
+  document.getElementById('mg-name').value=m?m.name:'';
+  document.getElementById('mg-user').value=m?m.username:'';
   document.getElementById('mg-pass').value='';
-  setMgrRole('manager');
-  // org_owner 只能建管理人，隱藏副管理員選項
+  document.getElementById('mgr-modal-title').textContent=editId?'編輯帳號':'新增管理人帳號';
+  setMgrRole(m?.role==='coowner'?'coowner':'manager');
   const coownerOpt=document.getElementById('role-opt-coowner');
   if(coownerOpt) coownerOpt.style.display=isOrgOwner()?'none':'';
+  // 載入權限（新帳號預設只開 canViewMgrRpt）
+  const perms=m?.permissions||null;
+  document.querySelectorAll('.perm-checkbox').forEach(cb=>{
+    const p=cb.dataset.perm;
+    if(!m){
+      // 新帳號：只勾 canViewMgrRpt
+      cb.checked=p==='canViewMgrRpt';
+    } else if(!perms||Object.keys(perms).length===0){
+      // 舊帳號：只勾 canViewMgrRpt
+      cb.checked=p==='canViewMgrRpt';
+    } else {
+      cb.checked=perms[p]===true;
+    }
+  });
+  document.getElementById('mgr-modal-save-btn').textContent=editId?'儲存':'新增';
   document.getElementById('mgr-modal').style.display='flex';
 }
+let editingMgrId=null;
 
-function saveManager(){
+async function saveManager(){
   if(!isOwner()){ toast('權限不足'); return; }
   const name=document.getElementById('mg-name').value.trim();
   const username=document.getElementById('mg-user').value.trim();
@@ -2381,13 +2486,20 @@ function saveManager(){
   if(!name||!username||password.length<6){ toast('請填寫完整資料，密碼至少6字元'); return; }
   if(getUsers().find(u=>u.username===username)){ toast('此帳號已存在'); return; }
   const isCoowner=document.getElementById('role-opt-coowner').style.border.includes('2px');
-  // org_owner 只能建 manager/coowner，不能建 org_owner/superadmin
   let role=isCoowner?'coowner':'manager';
   if(isOrgOwner()&&(role==='org_owner'||role==='owner')) role='manager';
-  // 自動帶入 org_id
   const orgId=isSuperAdmin()?null:(currentUser?.org_id||null);
-  managers.push({id:'m'+Date.now(),name,username,password,role,org_id:orgId,createdAt:new Date().toLocaleDateString('zh-TW')});
-  save(); closeModal('mgr-modal'); renderManagers(); toast(isCoowner?'副管理員已新增':'管理人已新增');
+  // 收集權限設定
+  const perms={};
+  document.querySelectorAll('.perm-checkbox').forEach(cb=>{ perms[cb.dataset.perm]=cb.checked; });
+  const newMgr={id:'m'+Date.now(),name,username,password,role,org_id:orgId,permissions:perms,createdAt:new Date().toLocaleDateString('zh-TW')};
+  managers.push(newMgr);
+  const {error:insertErr}=await db.from('test_managers').insert({
+    id:newMgr.id, name, username, password, role,
+    org_id:orgId, suspended:false, permissions:perms
+  });
+  if(insertErr){ console.error('insert error:',insertErr); toast(`❌ 新增失敗：${insertErr.message}`); managers.pop(); return; }
+  closeModal('mgr-modal'); renderManagers(); toast(isCoowner?'副管理員已新增':'管理人已新增');
 }
 // ── 組織管理 ──
 let editingOrgId = null;
@@ -2578,6 +2690,70 @@ function clearRoomLimit(){
   save(); closeModal('room-limit-modal'); renderManagers(); toast('已清除房間上限');
 }
 
+// ── 帳號權限檢查 ──
+function hasPerm(perm){
+  if(!currentUser) return false;
+  // admin / org_owner / coowner 有全部權限
+  if(currentUser.role==='owner'||currentUser.role==='superadmin') return true;
+  if(currentUser.role==='org_owner') return true; // 組織負責人全開
+  if(currentUser.role==='coowner') return true;   // 副管理員全開
+  // 一般管理人：依 permissions 設定
+  const perms=currentUser.permissions;
+  // 沒有 permissions 或空物件：只給 canViewMgrRpt
+  if(!perms||typeof perms!=='object'||Object.keys(perms).length===0){
+    return perm==='canViewMgrRpt';
+  }
+  // 有明確設定的：要是 true 才給
+  if(perm in perms) return perms[perm]===true;
+  // 未設定的 key：預設不給
+  return false;
+}
+
+// ── 獨立權限設定 Modal ──
+let editingPermMgrId = null;
+const PERM_LIST = [
+  {key:'canAdjust', label:'改帳功能'},
+  {key:'canExport', label:'匯出 CSV'},
+  {key:'canViewReport', label:'月份報表'},
+  {key:'canViewMgrRpt', label:'管理人報表'},
+  {key:'canQuickMatch', label:'快速對帳'},
+  {key:'canDeleteRoom', label:'刪除房間'},
+];
+
+function openPermModal(mgrId){
+  const m=managers.find(x=>x.id===mgrId); if(!m) return;
+  editingPermMgrId=mgrId;
+  document.getElementById('perm-modal-title').textContent=`${m.name} — 功能權限`;
+  document.getElementById('perm-modal-info').textContent=`帳號：${m.username}　角色：${{manager:'管理人',coowner:'副管理員',org_owner:'組織負責人'}[m.role]||m.role}`;
+  const perms=m.permissions||{};
+  const list=document.getElementById('perm-modal-list');
+  list.innerHTML=PERM_LIST.map(p=>{
+    const isChecked=Object.keys(perms).length===0?(p.key==='canViewMgrRpt'):perms[p.key]===true;
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:${isChecked?'var(--blue-bg)':'var(--surface)'};" onclick="this.style.background=this.querySelector('input').checked?'var(--surface)':'var(--blue-bg)'">
+      <input type="checkbox" data-perm="${p.key}" ${isChecked?'checked':''} style="width:16px;height:16px;accent-color:var(--blue);" onchange="this.closest('label').style.background=this.checked?'var(--blue-bg)':'var(--surface)'">
+      <span style="font-size:13px;font-weight:500;">${p.label}</span>
+    </label>`;
+  }).join('');
+  document.getElementById('perm-modal').style.display='flex';
+}
+
+async function savePermissions(){
+  if(!editingPermMgrId) return;
+  const m=managers.find(x=>x.id===editingPermMgrId); if(!m) return;
+  const perms={};
+  document.querySelectorAll('#perm-modal-list input[type=checkbox]').forEach(cb=>{
+    perms[cb.dataset.perm]=cb.checked;
+  });
+  m.permissions=perms;
+  // 直接寫入 Supabase
+  const {error}=await db.from('test_managers').update({permissions:perms}).eq('id',editingPermMgrId);
+  if(error){ toast('❌ 儲存失敗：'+error.message); return; }
+  closeModal('perm-modal');
+  // 如果是目前登入帳號，即時更新 currentUser 的權限
+  if(currentUser?.id===editingPermMgrId) currentUser.permissions=perms;
+  renderManagers(); toast('權限已更新');
+}
+
 function toggleSuspend(id){
   if(!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
   const m=managers.find(x=>x.id===id);
@@ -2634,12 +2810,13 @@ function openRoomModal(id){
     document.getElementById('f-elec-price').value=r.elecPrice||'';
     document.getElementById('f-elec-balance').value=r.elecBalance||'';
     document.getElementById('f-acc').value=r.acc||'';
+    const bl5=document.getElementById('f-bank-last5');if(bl5)bl5.value=r.bankLast5||'';
     document.getElementById('f-note').value=r.note||'';
     populateAddrSelect(r.addr||'未分類');
     setElecType(r.elecType||'monthly');
     updateExpected();
   } else {
-    ['f-name','f-tenant','f-phone','f-emergency','f-checkin','f-checkout','f-note','f-elec-acc'].forEach(x=>document.getElementById(x).value='');
+    ['f-name','f-tenant','f-phone','f-emergency','f-checkin','f-checkout','f-note','f-elec-acc','f-bank-last5'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
     document.getElementById('f-rent').value='';
     document.getElementById('f-deposit').value='';
     document.getElementById('f-elec').value='';
@@ -2860,19 +3037,24 @@ function deleteAddr(){
 
 
 let elecTopupRoomId = null;
-// ── 改帳功能（Admin + 副管理員）──
-function canAdjust(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='coowner'); }
-// Admin 看全部改帳記錄；副管理員只看自己負責地址的
+// ── 改帳功能 ──
+// canAdjust：有改帳權限（含有 canAdjust 權限的管理人）
+function canAdjust(){
+  if(!currentUser) return false;
+  if(currentUser.role==='owner'||currentUser.role==='superadmin') return true;
+  if(currentUser.role==='org_owner'||currentUser.role==='coowner') return true;
+  return hasPerm('canAdjust'); // 一般管理人依權限設定
+}
+// canSeeAdjLog：能看到改帳記錄和改帳按鈕
 function canSeeAdjLog(r){
   if(!currentUser) return false;
-  if(currentUser.role==='owner') return true; // admin 看全部
-  if(currentUser.role==='coowner'){
-    // 副管理員看自己負責的地址
-    const addrObj=addresses.find(a=>a.name===(r.addr||''));
-    if(!addrObj) return true; // 未分類也看
-    return (addrObj.managers||[]).includes(currentUser.id)||true; // coowner 看全部（同 isOwner）
-  }
-  return false;
+  if(currentUser.role==='owner'||currentUser.role==='superadmin') return true;
+  if(currentUser.role==='org_owner') return true;
+  if(currentUser.role==='coowner') return true;
+  // 一般管理人：有 canAdjust 權限且負責此地址
+  if(!hasPerm('canAdjust')) return false;
+  const addrObj=addresses.find(a=>a.name===(r.addr||''));
+  return addrObj&&(addrObj.managers||[]).includes(currentUser.id);
 }
 
 function openAdjustModal(roomId, mk){
@@ -3064,6 +3246,94 @@ function checkOverdueRepairs(){
   } else {
     banner.classList.remove('show');
   }
+}
+
+// ── 快速對帳 ──
+let quickMatchRoomId = null;
+
+function openQuickMatch(){
+  document.getElementById('qm-last5').value='';
+  document.getElementById('qm-amount').value='';
+  document.getElementById('qm-result').innerHTML='';
+  document.getElementById('qm-confirm-btn').style.display='none';
+  quickMatchRoomId=null;
+  document.getElementById('quick-match-modal').style.display='flex';
+}
+
+function quickMatchSearch(){
+  const last5=document.getElementById('qm-last5').value.trim();
+  const amount=parseInt(document.getElementById('qm-amount').value)||0;
+  const resultEl=document.getElementById('qm-result');
+  const confirmBtn=document.getElementById('qm-confirm-btn');
+  quickMatchRoomId=null;
+  confirmBtn.style.display='none';
+
+  if(!last5&&!amount){ resultEl.innerHTML=''; return; }
+
+  // 搜尋符合條件的房間
+  const hk=histMonthKey();
+  const candidates=getVisibleRooms().filter(r=>{
+    if(!r.tenant||!r.tenant.trim()) return false;
+    const pay=(payments[hk]&&payments[hk][r.id])||{};
+    if(pay.status==='paid') return false; // 已付款的不顯示
+    const matchLast5=!last5||(r.bankLast5&&r.bankLast5===last5);
+    const expectedAmt=getActualRent(r,(payments[hk]||{})[r.id]);
+    const matchAmt=!amount||(expectedAmt===amount);
+    return matchLast5&&matchAmt;
+  });
+
+  if(!candidates.length){
+    resultEl.innerHTML=`<div style="color:var(--red-dk);font-size:13px;padding:10px;background:var(--red-bg);border-radius:8px;">找不到符合的租客${last5?'（後五碼：'+last5+'）':''}${amount?'（金額：$'+amount.toLocaleString()+'）':''}</div>`;
+    return;
+  }
+
+  if(candidates.length===1){
+    const r=candidates[0];
+    const expectedAmt=getActualRent(r,(payments[hk]||{})[r.id]);
+    quickMatchRoomId=r.id;
+    confirmBtn.style.display='';
+    resultEl.innerHTML=`<div style="background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:12px 14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--green-dk);margin-bottom:6px;">✓ 找到對應租客</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
+        <div><span style="color:var(--text3)">房間</span> <b>${r.name}</b></div>
+        <div><span style="color:var(--text3)">租客</span> ${r.tenant}</div>
+        <div><span style="color:var(--text3)">地址</span> ${r.addr}</div>
+        <div><span style="color:var(--text3)">應收</span> <b>$${expectedAmt.toLocaleString()}</b></div>
+      </div>
+      ${amount&&amount!==expectedAmt?`<div style="color:var(--amber-dk);font-size:12px;margin-top:8px;background:var(--amber-bg);padding:6px 10px;border-radius:6px;">⚠ 入帳金額 $${amount.toLocaleString()} 與應收 $${expectedAmt.toLocaleString()} 不符</div>`:''}
+    </div>`;
+  } else {
+    resultEl.innerHTML=`<div style="font-size:13px;color:var(--amber-dk);margin-bottom:8px;">找到 ${candidates.length} 筆，請縮小條件：</div>`+
+      candidates.map(r=>{
+        const expectedAmt=getActualRent(r,(payments[hk]||{})[r.id]);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--surface);" onclick="selectQuickMatch('${r.id}',this)">
+          <div><b>${r.name}</b> ${r.tenant} <span style="font-size:11px;color:var(--text3);">${r.addr}</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;">$${expectedAmt.toLocaleString()}</div>
+        </div>`;
+      }).join('');
+  }
+}
+
+function selectQuickMatch(roomId, el){
+  quickMatchRoomId=roomId;
+  document.querySelectorAll('#qm-result [onclick]').forEach(e=>e.style.background='var(--surface)');
+  el.style.background='var(--blue-bg)';
+  el.style.borderColor='var(--blue)';
+  document.getElementById('qm-confirm-btn').style.display='';
+}
+
+function quickMatchConfirm(){
+  if(!quickMatchRoomId){ toast('請先選擇租客'); return; }
+  const hk=histMonthKey();
+  if(!payments[hk]) payments[hk]={};
+  if(!payments[hk][quickMatchRoomId]) payments[hk][quickMatchRoomId]={};
+  payments[hk][quickMatchRoomId]={
+    ...payments[hk][quickMatchRoomId],
+    status:'paid', paidAt:new Date().toISOString(), method:'manual'
+  };
+  save(); closeModal('quick-match-modal');
+  renderHistory(); renderDashboard(); renderReport();
+  toast('✓ 已標記已付款');
 }
 
 function deleteRoom(id){
@@ -3718,6 +3988,106 @@ function removeCustomExpense(i){
   const k=mgrExpKey();
   if(customExpenses[k]) customExpenses[k].splice(i,1);
   saveMgrExpenses(); renderExpenseGrid();
+}
+
+function exportMgrRpt(){
+  const mk=mgrExpKey().split('__')[0];
+  const [y,m]=mk.split('-').map(Number);
+  const monthLabel=`${y}年${m}月`;
+  const addrLabel=activeMgrAddr==='all'?'全部地址':activeMgrAddr;
+
+  // 取資料
+  const orgId=getCurrentOrgId();
+  let filtered=getVisibleRooms();
+  if(activeMgrAddr!=='all') filtered=filtered.filter(r=>(r.addr||'未分類')===activeMgrAddr);
+  const rented=filtered.filter(r=>r.tenant&&r.tenant.trim());
+  const vacant=filtered.filter(r=>!r.tenant||!r.tenant.trim());
+  const paid=rented.filter(r=>getStatus(r.id)==='paid');
+
+  // 計算收入
+  const mk1=`${mk}`;
+  const elecPrepayMgr2=rented.filter(r=>r.elecType==='prepay').reduce((s,r)=>{
+    const done=(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done'||t.doneWhenVacant) return false;
+      const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
+      return d&&!isNaN(d)&&d.getFullYear()===y&&d.getMonth()+1===m;
+    });
+    return s+done.reduce((ss,t)=>ss+t.amount,0);
+  },0);
+  const totalActual2=paid.reduce((s,r)=>s+getActualRent(r,(payments[mk1]||{})[r.id]),0)+elecPrepayMgr2;
+
+  // 支出（用 DEFAULT_EXPENSE_ITEMS 的 id 查，不用中文 label）
+  let expRows=[];
+  let totalExp=0;
+
+  function getAddrExpRows(addr){
+    const flatKey=`${mk}__${addr}`;
+    const expData=mgrExpenses[flatKey]||{};
+    const ck=flatKey.replace('__',':');
+    const customList=customExpenses[ck]||[];
+    const rows=[];
+    DEFAULT_EXPENSE_ITEMS.forEach(item=>{
+      if(expData[item.id]>0) rows.push([item.label, expData[item.id]]);
+    });
+    customList.filter(e=>e.enabled&&e.amount>0).forEach(e=>rows.push([e.name, e.amount]));
+    return rows;
+  }
+
+  if(activeMgrAddr==='all'){
+    const addrList=[...new Set(filtered.map(r=>r.addr||'未分類'))];
+    addrList.forEach(addr=>{
+      getAddrExpRows(addr).forEach(([l,v])=>expRows.push([addr+' - '+l, v]));
+    });
+    // 也查 "all" key
+    getAddrExpRows('all').forEach(([l,v])=>expRows.push([l, v]));
+  } else {
+    expRows=getAddrExpRows(activeMgrAddr);
+  }
+  totalExp=expRows.reduce((s,[,v])=>s+(Number(v)||0),0);
+  const netIncome=totalActual2-totalExp;
+
+  // 房間明細
+  const roomRows=filtered.map(r=>{
+    const isVacant=!r.tenant||!r.tenant.trim();
+    const s=getStatus(r.id);
+    const statusLabel=isVacant?'空房':s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
+    const elecMonthly=r.elecType==='monthly'?(r.elec||0):0;
+    const elecPrepay=(!isVacant&&r.elecType==='prepay')?(r.elecTopups||[]).filter(t=>{
+      if(t.status!=='done'||t.doneWhenVacant) return false;
+      const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
+      return d&&!isNaN(d)&&d.getFullYear()===y&&d.getMonth()+1===m;
+    }).reduce((s,t)=>s+t.amount,0):0;
+    const expectedAmt=isVacant?0:(r.rent||0)+elecMonthly;
+    return [r.name,r.addr,r.tenant||'空房',statusLabel,isVacant?'':('$'+(r.rent||0).toLocaleString()),isVacant?'':r.elecType==='prepay'?('⚡$'+elecPrepay.toLocaleString()):elecMonthly>0?('$'+elecMonthly.toLocaleString()):'',isVacant?'':('$'+expectedAmt.toLocaleString())];
+  });
+
+  // 建立 CSV
+  const BOM='﻿';
+  const rows=[
+    [`好管理 管理人報表 ${monthLabel}（${addrLabel}）`],
+    [],
+    ['【收支摘要】'],
+    ['總房間',filtered.length+'間','出租中',rented.length+'間','空房',vacant.length+'間'],
+    ['已收租金','$'+(totalActual2-elecPrepayMgr2).toLocaleString(),'已收儲值電費','$'+elecPrepayMgr2.toLocaleString(),'合計','$'+totalActual2.toLocaleString()],
+    [],
+    ['【支出明細】'],
+    ...(expRows.length>0?expRows.map(([l,v])=>[l,'$'+(Number(v)||0).toLocaleString()]):[['（無支出紀錄）','']]),
+    ['總支出','$'+totalExp.toLocaleString()],
+    [],
+    ['實際月收入','$'+netIncome.toLocaleString()],
+    [],
+    ['【房間明細】'],
+    ['房間','地址','租客','狀態','月租金','電費','應收'],
+    ...roomRows
+  ];
+
+  const csv=BOM+rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`管理人報表_${addrLabel}_${monthLabel}.csv`;
+  a.click();
+  toast('✓ 報表已匯出');
 }
 
 function calcIncome(){
