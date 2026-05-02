@@ -6,6 +6,54 @@
 <title>繳費查詢</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+async function submitRepair(){
+  const roomId = currentRoomId;
+  if(!roomId){ showRepairResult('請先查詢後再回報問題','error'); return; }
+  const types=[...document.querySelectorAll('#repair-types input:checked')].map(cb=>cb.value);
+  const custom=document.getElementById('repair-custom').value.trim();
+  const desc=document.getElementById('repair-desc').value.trim();
+  if(!types.length&&!custom&&!desc){
+    showRepairResult('請選擇問題類型或填寫說明','error'); return;
+  }
+  const btn=document.getElementById('repair-btn');
+  btn.disabled=true; btn.textContent='送出中...';
+  try{
+    const allTypes=[...types, ...(custom?[custom]:[])];
+    const label=allTypes.length?allTypes.join('、'):'問題回報';
+    const repairItem={
+      id:'r'+Date.now(),
+      label: label+(desc?'：'+desc.slice(0,30):''),
+      desc, status:'pending',
+      date:new Date().toISOString().split('T')[0],
+      source:'tenant'
+    };
+    const {data:roomData,error:fetchErr}=await db.from('test_rooms').select('repairs').eq('id',roomId).single();
+    if(fetchErr) throw fetchErr;
+    const currentRepairs=roomData?.repairs||[];
+    currentRepairs.push(repairItem);
+    const {error:updateErr}=await db.from('test_rooms').update({repairs:currentRepairs}).eq('id',roomId);
+    if(updateErr) throw updateErr;
+    showRepairResult('✓ 問題回報已送出，管理人將盡快處理，感謝您的回報！','success');
+    document.querySelectorAll('#repair-types input').forEach(cb=>cb.checked=false);
+    document.getElementById('repair-custom').value='';
+    document.getElementById('repair-desc').value='';
+  }catch(e){
+    console.error(e);
+    showRepairResult('送出失敗：'+e.message,'error');
+  } finally {
+    btn.disabled=false; btn.textContent='送出問題回報';
+  }
+}
+
+function showRepairResult(msg, type){
+  const el=document.getElementById('repair-result');
+  el.className=type==='success'?'repair-success':'repair-error';
+  el.textContent=msg;
+  el.style.display='block';
+  if(type==='success') setTimeout(()=>el.style.display='none', 5000);
+}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans TC',sans-serif;background:#F7F6F2;color:#1C1B18;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 4rem;}
@@ -147,6 +195,32 @@ body{font-family:'Noto Sans TC',sans-serif;background:#F7F6F2;color:#1C1B18;min-
       <strong>⚠ 注意事項</strong>
       本月租金帳號<strong>限收款一次</strong>，請勿重複匯款。<br>
       如需第二次匯款或有任何問題，請聯絡管理人。
+    </div>
+
+    <!-- 報修區塊 -->
+    <div class="divider"></div>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;">🔧 問題回報</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">選擇問題項目（可多選）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;" id="repair-types">
+        <label class="repair-opt"><input type="checkbox" value="冷氣故障"> 冷氣故障</label>
+        <label class="repair-opt"><input type="checkbox" value="熱水器故障"> 熱水器故障</label>
+        <label class="repair-opt"><input type="checkbox" value="水管漏水"> 水管漏水</label>
+        <label class="repair-opt"><input type="checkbox" value="門鎖故障"> 門鎖故障</label>
+        <label class="repair-opt"><input type="checkbox" value="牆壁滲水"> 牆壁滲水</label>
+        <label class="repair-opt"><input type="checkbox" value="廁所堵塞"> 廁所堵塞</label>
+        <label class="repair-opt"><input type="checkbox" value="網路故障"> 網路故障</label>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">其他問題（自行輸入）</div>
+        <input type="text" id="repair-custom" placeholder="例：天花板漏水" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">詳細說明</div>
+        <textarea id="repair-desc" placeholder="請描述問題狀況、發生位置等..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;resize:vertical;min-height:80px;"></textarea>
+      </div>
+      <button onclick="submitRepair()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#1C1B18;color:#fff;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;" id="repair-btn">送出問題回報</button>
+      <div id="repair-result" style="margin-top:10px;display:none;"></div>
     </div>
   </div>
 </div>
