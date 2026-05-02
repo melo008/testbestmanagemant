@@ -417,6 +417,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
       <button class="nav-item" id="nav-addr-mgr" onclick="goPage('addrmgr')"><span class="ico">📍</span>地址管理</button>
       <button class="nav-item" id="nav-archive" onclick="goPage('archive')"><span class="ico">📖</span>歷史租客</button>
       <button class="nav-item" id="nav-orgs" onclick="goPage('orgs')" style="display:none;"><span class="ico">🏢</span>組織管理</button>
+      <button class="nav-item" id="nav-auditlog" onclick="goPage('auditlog')" style="display:none;"><span class="ico">📝</span>操作紀錄</button>
       <button class="nav-item" onclick="goPage('settings')"><span class="ico">⚙️</span>系統設定</button>
       <button class="nav-item" onclick="openExportModal()"><span class="ico">⬇</span>匯出 CSV</button>
     </nav>
@@ -716,6 +717,26 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <table>
           <thead><tr><th>組織名稱</th><th>收款方式</th><th>收款資訊</th><th>帳號數</th><th>操作</th></tr></thead>
           <tbody id="orgs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 操作 Log -->
+    <div class="page" id="page-auditlog">
+      <div class="pg-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+          <div><div class="pg-title">操作紀錄</div><div class="pg-sub">所有重要操作的歷史記錄</div></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="exportAuditLog()">⬇ 匯出 CSV</button>
+          <button class="btn btn-sm" onclick="loadAuditLog()">🔄 重新整理</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>時間</th><th>帳號</th><th>操作</th><th>對象</th><th>備註</th></tr></thead>
+          <tbody id="auditlog-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem;">載入中...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1553,9 +1574,16 @@ function doLogin(){
   // 設定當前組織
   currentOrg = found.org_id ? organizations.find(o=>o.id===found.org_id)||null : null;
   document.getElementById('auth-err').style.display='none';
+  // 記錄登入 log（含 IP）
+  fetch('https://api.ipify.org?format=json')
+    .then(r=>r.json())
+    .then(d=>writeLog('登入', found.username, `IP: ${d.ip}`))
+    .catch(()=>writeLog('登入', found.username, 'IP: 無法取得'));
   // 顯示/隱藏 superadmin 功能
   const orgNavBtn=document.getElementById('nav-orgs');
   if(orgNavBtn) orgNavBtn.style.display=(found.role==='owner'||found.role==='superadmin')?'':'none';
+  const logNavBtn=document.getElementById('nav-auditlog');
+  if(logNavBtn) logNavBtn.style.display=(found.role==='owner'||found.role==='superadmin')?'':'none';
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-screen').style.display='flex';
   // 頭像顏色
@@ -1644,12 +1672,14 @@ function closeSidebar(){
   document.getElementById('sidebar-overlay').classList.remove('show');
 }
 
-const PAGE_IDX={dashboard:0,rooms:1,tenants:2,history:3,handover:4,report:5,mgrrpt:6,managers:7,addrmgr:8,archive:9,orgs:10,settings:11};
+const PAGE_IDX={dashboard:0,rooms:1,tenants:2,history:3,handover:4,report:5,mgrrpt:6,managers:7,addrmgr:8,archive:9,orgs:10,auditlog:11,settings:12};
 const MOBILE_TABS=['dashboard','rooms','tenants','history'];
 function goPage(id){
   if((id==='managers'||id==='addrmgr')&&!isOwner()){ toast('權限不足'); return; }
   if(id==='archive'&&!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
   if(id==='orgs'&&!isSuperAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  if(id==='auditlog'&&!isSuperAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  if(id==='auditlog') loadAuditLog();
   if(id==='report'&&!hasPerm('canViewReport')){ toast('您沒有查看月份報表的權限'); return; }
   if(id==='mgrrpt'&&!hasPerm('canViewMgrRpt')){ toast('您沒有查看管理人報表的權限'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -2518,6 +2548,7 @@ async function saveManager(){
   });
   if(insertErr){ console.error('insert error:',insertErr); toast(`❌ 新增失敗：${insertErr.message}`); managers.pop(); return; }
   closeModal('mgr-modal'); renderManagers(); toast(isCoowner?'副管理員已新增':'管理人已新增');
+  writeLog('新增帳號', username, role);
 }
 // ── 組織管理 ──
 let editingOrgId = null;
@@ -2657,6 +2688,57 @@ async function deleteOrgFromDB(id){
   await db.from('test_organizations').delete().eq('id',id);
 }
 
+// ── 操作 Log ──
+function exportAuditLog(){
+  const rows=[];
+  const tbody=document.getElementById('auditlog-tbody');
+  if(!tbody) return;
+  const trs=tbody.querySelectorAll('tr');
+  if(!trs.length){ toast('尚無資料可匯出'); return; }
+  const BOM='﻿';
+  rows.push(['時間','帳號','操作','對象','備註']);
+  trs.forEach(tr=>{
+    const tds=tr.querySelectorAll('td');
+    if(tds.length>=5){
+      rows.push([tds[0].textContent.trim(),tds[1].textContent.trim(),tds[2].textContent.trim(),tds[3].textContent.trim(),tds[4].textContent.trim()]);
+    }
+  });
+  const csv=BOM+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`操作紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.csv`;
+  a.click();
+  toast('✓ 操作紀錄已匯出');
+}
+
+async function loadAuditLog(){
+  const tbody=document.getElementById('auditlog-tbody'); if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem;">載入中...</td></tr>';
+  try{
+    const {data,error}=await db.from('test_audit_log')
+      .select('*').order('created_at',{ascending:false}).limit(200);
+    if(error) throw error;
+    if(!data||!data.length){
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem;">尚無操作紀錄</td></tr>';
+      return;
+    }
+    tbody.innerHTML=data.map(row=>{
+      const dt=new Date(row.created_at);
+      const timeStr=`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      return `<tr>
+        <td style="font-size:12px;white-space:nowrap;font-family:'DM Mono',monospace;">${timeStr}</td>
+        <td style="font-size:12px;">${row.user_name||row.user_id||'—'}</td>
+        <td><span class="badge ${row.action==='登入'?'b-paid':row.action==='登出'?'b-vacant':row.action==='刪除房間'?'b-unpaid':'b-admin'}" style="font-size:11px;">${row.action||'—'}</span></td>
+        <td style="font-size:13px;font-weight:500;">${row.target||'—'}</td>
+        <td style="font-size:12px;color:var(--text3);">${row.detail||'—'}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--red-dk);padding:2rem;">載入失敗：${e.message}</td></tr>`;
+  }
+}
+
 function renderOrgs(){
   const tbody=document.getElementById('orgs-tbody'); if(!tbody) return;
   if(!organizations.length){
@@ -2777,9 +2859,21 @@ async function savePermissions(){
   const {error}=await db.from('test_managers').update({permissions:perms}).eq('id',editingPermMgrId);
   if(error){ toast('❌ 儲存失敗：'+error.message); return; }
   closeModal('perm-modal');
-  // 如果是目前登入帳號，即時更新 currentUser 的權限
   if(currentUser?.id===editingPermMgrId) currentUser.permissions=perms;
+  writeLog('修改權限', m.name, m.username);
   renderManagers(); toast('權限已更新');
+}
+
+// ── 操作 Log ──
+async function writeLog(action, target, detail=''){
+  try{
+    await db.from('test_audit_log').insert({
+      user_id: currentUser?.id||'unknown',
+      user_name: currentUser?.name||currentUser?.username||'unknown',
+      action, target, detail,
+      org_id: getCurrentOrgId()||currentUser?.org_id||null
+    });
+  }catch(e){ console.warn('writeLog error:', e); }
 }
 
 function toggleSuspend(id){
@@ -2790,6 +2884,7 @@ function toggleSuspend(id){
   const action=m.suspended?'解除停權':'停權';
   if(!confirm(`確定${action}「${m.name}（${m.username}）」？`)) return;
   m.suspended=!m.suspended;
+  writeLog(action, m.name, m.username);
   save(); renderManagers();
   toast(`已${action}「${m.name}」`);
 }
@@ -3118,6 +3213,7 @@ function confirmAdjust(){
     payments[mk][roomId].paidAt=prev.paidAt||new Date().toISOString();
     payments[mk][roomId].method='manual';
   }
+  writeLog('改帳', r.name, `${mk} $${prevAmount.toLocaleString()} → $${newAmount.toLocaleString()} ${reason?'('+reason+')':''}`);
   save(); closeModal('adjust-modal'); renderHistory(); renderReport(); renderDashboard();
   toast(`已改帳：$${prevAmount.toLocaleString()} → $${newAmount.toLocaleString()}`);
 }
@@ -3378,8 +3474,10 @@ async function confirmDeleteRoom(){
   const input=document.getElementById('delete-confirm-username').value.trim();
   if(!input){ toast('請輸入帳號'); return; }
   if(input!==currentUser?.username){ toast('帳號不正確，請重新輸入'); return; }
+  const delName=rooms.find(r=>r.id===id)?.name||id;
   rooms=rooms.filter(r=>r.id!==id);
   await db.from('test_rooms').delete().eq('id',id);
+  writeLog('刪除房間', delName, '');
   closeModal('delete-room-modal'); renderAll(); toast('已刪除');
 }
 function markAllPaid(){
