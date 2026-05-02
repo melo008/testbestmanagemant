@@ -967,6 +967,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canViewMgrRpt" checked> 管理人報表</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canQuickMatch"> 快速對帳</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canDeleteRoom"> 刪除房間</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canAddAccount"> 新增帳號</label>
         </div>
       </div>
     </div>
@@ -1320,6 +1321,7 @@ async function save(){
         repairs:r.repairs||[],
         handover_data:r.handoverData||null,
         deposit_data:r.depositData||null,
+        bank_last5:r.bankLast5||null,
         org_id:r.org_id||getCurrentOrgId()||null,
         updated_at:new Date().toISOString()
       }));
@@ -1415,6 +1417,7 @@ async function load(){
       repairs:r.repairs||[],
       handoverData:r.handover_data||null,
       depositData:r.deposit_data||null,
+      bankLast5:r.bank_last5||'',
       org_id:r.org_id||null
     }));
     // Payments
@@ -1572,15 +1575,7 @@ function doLogin(){
   };
   const ac=avatarColors[found.role]||avatarColors.manager;
   document.getElementById('nav-name').textContent=found.name;
-  // 套用功能權限到側邊欄
-  setTimeout(()=>{
-    const reportNav=document.querySelector('[onclick*="report"]');
-    const mgrrptNav=document.querySelector('[onclick*="mgrrpt"]');
-    const exportNav=document.querySelector('[onclick*="openExportModal"]');
-    if(reportNav) reportNav.style.display=hasPerm('canViewReport')?'':'none';
-    if(mgrrptNav) mgrrptNav.style.display=hasPerm('canViewMgrRpt')?'':'none';
-    if(exportNav) exportNav.style.display=hasPerm('canExport')?'':'none';
-  },100);
+  // 權限控制：不隱藏按鈕，但進入功能時會擋住（goPage/function 入口處理）
   document.getElementById('nav-role').textContent=roleLabels[found.role]||'管理人';
   document.getElementById('nav-avatar').textContent=found.name[0];
   document.getElementById('nav-avatar').style.background=ac.bg;
@@ -1625,7 +1620,10 @@ function doLogout(){
 function isSuperAdmin(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'); } // owner = 最高權限
 function isOrgOwner(){ return currentUser&&currentUser.role==='org_owner'; }
 // isOwner：可以進行大部分管理操作
-function isOwner(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='org_owner'||currentUser.role==='coowner'); }
+// isOwner：最高管理權（admin + org_owner，不含 coowner）
+function isOwner(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='org_owner'); }
+// isStaff：一般管理操作（含 coowner）
+function isStaff(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='org_owner'||currentUser.role==='coowner'); }
 // isAdmin：可以看管理人頁面、地址管理、歷史租客
 function isAdmin(){ return currentUser&&(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='coowner'||currentUser.role==='org_owner'); }
 // getCurrentOrgId：owner/superadmin = null（看全部），其他人 = 自己的 org_id
@@ -1651,7 +1649,9 @@ const MOBILE_TABS=['dashboard','rooms','tenants','history'];
 function goPage(id){
   if((id==='managers'||id==='addrmgr')&&!isOwner()){ toast('權限不足'); return; }
   if(id==='archive'&&!isAdmin()){ toast('此功能僅 Admin 可使用'); return; }
-  if(id==='orgs'&&!isSuperAdmin()){ toast('此功能僅 Super Admin 可使用'); return; }
+  if(id==='orgs'&&!isSuperAdmin()){ toast('此功能僅 Admin 可使用'); return; }
+  if(id==='report'&&!hasPerm('canViewReport')){ toast('您沒有查看月份報表的權限'); return; }
+  if(id==='mgrrpt'&&!hasPerm('canViewMgrRpt')){ toast('您沒有查看管理人報表的權限'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   const navItems=document.querySelectorAll('.nav-item');
@@ -1704,11 +1704,21 @@ function getVisibleRooms(){
 
 // 管理人對自己負責的房間有完整權限
 function canEditRoom(r){
-  if(isOwner()) return true;
-  if(!currentUser || currentUser.role!=='manager') return false;
+  if(!currentUser) return false;
+  // admin / org_owner 全部可以
+  if(currentUser.role==='owner'||currentUser.role==='superadmin'||currentUser.role==='org_owner') return true;
+  // coowner：可以編輯全部（但刪除要有 canDeleteRoom 權限）
+  if(currentUser.role==='coowner') return true;
+  // manager：只能編輯負責的地址
   const uid=currentUser.id;
   const addrObj=addresses.find(a=>a.name===(r.addr||''));
-  return addrObj && (addrObj.managers||[]).includes(uid);
+  return addrObj&&(addrObj.managers||[]).includes(uid);
+}
+// 刪除房間需要額外的 canDeleteRoom 權限
+function canDeleteRoomCheck(r){
+  if(!canEditRoom(r)) return false;
+  if(currentUser?.role==='owner'||currentUser?.role==='superadmin') return true;
+  return hasPerm('canDeleteRoom'); // 其他所有角色依 permissions
 }
 
 function promptNewAddr(){
@@ -1962,7 +1972,7 @@ function renderRooms(){
         ${s==='unpaid'?`<button class="btn btn-sm btn-warn" onclick="setStatus('${r.id}','partial')">部分</button>`:''}
         ${s!=='unpaid'?`<button class="btn btn-sm" onclick="setStatus('${r.id}','unpaid')">撤銷</button>`:''}
         ${canEdit?`<button class="btn btn-sm" onclick="openRoomModal('${r.id}')">編輯</button>`:''}
-        ${canEdit?`<button class="btn btn-sm btn-danger" onclick="deleteRoom('${r.id}')">刪除</button>`:''}
+        ${canDeleteRoomCheck(r)?`<button class="btn btn-sm btn-danger" onclick="deleteRoom('${r.id}')">刪除</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -2429,16 +2439,17 @@ function renderManagers(){
           <button class="btn btn-sm ${isSuspended?'btn-success':''}" onclick="toggleSuspend('${m.id}')">${isSuspended?'解除停權':'停權'}</button>
           <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
         `:''}
-        ${isOrgOwner()&&m.org_id===currentUser.org_id&&m.role==='manager'?`
+        ${isOrgOwner()&&m.org_id===currentUser?.org_id&&m.role==='manager'?`
           <button class="btn btn-sm btn-danger" onclick="deleteManager('${m.id}')">移除</button>
         `:''}
         <button class="btn btn-sm" onclick="openChangePwModal('${m.id}')">改密碼</button>
-        ${isSuperAdmin()&&m.role!=='owner'&&m.role!=='superadmin'?`<button class="btn btn-sm" onclick="openPermModal('${m.id}')">權限</button>`:''}
+        ${(isSuperAdmin()&&m.role!=='owner'&&m.role!=='superadmin')||(isOrgOwner()&&m.org_id===currentUser?.org_id&&m.role==='manager')?`<button class="btn btn-sm" onclick="openPermModal('${m.id}')">權限</button>`:''}
       </td>
     </tr>`;
   }).join('');
   const addBtn=document.querySelector('#page-managers .btn-primary');
-  if(addBtn) addBtn.style.display=(isSuperAdmin()||isOrgOwner())?'':'none';
+  const canAdd=isSuperAdmin()||hasPerm('canAddAccount');
+  if(addBtn) addBtn.style.display=canAdd?'':'none';
   // 管理人帳號頁標題
   const pgTitle=document.querySelector('#page-managers .pg-title');
   if(pgTitle&&isOrgOwner()&&currentOrg) pgTitle.textContent=`${currentOrg.name} — 管理人帳號`;
@@ -2458,7 +2469,11 @@ function openManagerModal(editId){
   document.getElementById('mgr-modal-title').textContent=editId?'編輯帳號':'新增管理人帳號';
   setMgrRole(m?.role==='coowner'?'coowner':'manager');
   const coownerOpt=document.getElementById('role-opt-coowner');
-  if(coownerOpt) coownerOpt.style.display=isOrgOwner()?'none':'';
+  // 只有 admin 可以創建 coowner
+  if(coownerOpt) coownerOpt.style.display=isSuperAdmin()?'':'none';
+  // 只有 admin 可以設定 canAddAccount 權限
+  const addAccLabel=document.querySelector('.perm-checkbox[data-perm="canAddAccount"]')?.closest('label');
+  if(addAccLabel) addAccLabel.style.display=isSuperAdmin()?'':'none';
   // 載入權限（新帳號預設只開 canViewMgrRpt）
   const perms=m?.permissions||null;
   document.querySelectorAll('.perm-checkbox').forEach(cb=>{
@@ -2479,7 +2494,7 @@ function openManagerModal(editId){
 let editingMgrId=null;
 
 async function saveManager(){
-  if(!isOwner()){ toast('權限不足'); return; }
+  if(!isSuperAdmin()&&!hasPerm('canAddAccount')){ toast('您沒有新增帳號的權限'); return; }
   const name=document.getElementById('mg-name').value.trim();
   const username=document.getElementById('mg-user').value.trim();
   const password=document.getElementById('mg-pass').value;
@@ -2487,11 +2502,14 @@ async function saveManager(){
   if(getUsers().find(u=>u.username===username)){ toast('此帳號已存在'); return; }
   const isCoowner=document.getElementById('role-opt-coowner').style.border.includes('2px');
   let role=isCoowner?'coowner':'manager';
-  if(isOrgOwner()&&(role==='org_owner'||role==='owner')) role='manager';
+  // 只有 admin 可以創建 coowner
+  if(!isSuperAdmin()) role='manager';
   const orgId=isSuperAdmin()?null:(currentUser?.org_id||null);
   // 收集權限設定
   const perms={};
   document.querySelectorAll('.perm-checkbox').forEach(cb=>{ perms[cb.dataset.perm]=cb.checked; });
+  // 只有 admin 能設定 canAddAccount，非 admin 強制 false
+  if(!isSuperAdmin()) perms['canAddAccount']=false;
   const newMgr={id:'m'+Date.now(),name,username,password,role,org_id:orgId,permissions:perms,createdAt:new Date().toLocaleDateString('zh-TW')};
   managers.push(newMgr);
   const {error:insertErr}=await db.from('test_managers').insert({
@@ -2693,20 +2711,15 @@ function clearRoomLimit(){
 // ── 帳號權限檢查 ──
 function hasPerm(perm){
   if(!currentUser) return false;
-  // admin / org_owner / coowner 有全部權限
+  // 只有 admin（owner/superadmin）有全部功能權限
   if(currentUser.role==='owner'||currentUser.role==='superadmin') return true;
-  if(currentUser.role==='org_owner') return true; // 組織負責人全開
-  if(currentUser.role==='coowner') return true;   // 副管理員全開
-  // 一般管理人：依 permissions 設定
+  // org_owner / coowner / manager 全部依 permissions 設定
   const perms=currentUser.permissions;
-  // 沒有 permissions 或空物件：只給 canViewMgrRpt
   if(!perms||typeof perms!=='object'||Object.keys(perms).length===0){
+    // 沒有設定 permissions：預設只給 canViewMgrRpt
     return perm==='canViewMgrRpt';
   }
-  // 有明確設定的：要是 true 才給
-  if(perm in perms) return perms[perm]===true;
-  // 未設定的 key：預設不給
-  return false;
+  return perms[perm]===true;
 }
 
 // ── 獨立權限設定 Modal ──
@@ -2718,16 +2731,29 @@ const PERM_LIST = [
   {key:'canViewMgrRpt', label:'管理人報表'},
   {key:'canQuickMatch', label:'快速對帳'},
   {key:'canDeleteRoom', label:'刪除房間'},
+  {key:'canAddAccount', label:'新增帳號'},
 ];
 
 function openPermModal(mgrId){
   const m=managers.find(x=>x.id===mgrId); if(!m) return;
+  // 只有 admin 可以開所有人的權限；org_owner 只能開自己組織的 manager
+  if(!isSuperAdmin()&&!(isOrgOwner()&&m.org_id===currentUser?.org_id)){
+    toast('您沒有設定此帳號權限的能力'); return;
+  }
   editingPermMgrId=mgrId;
   document.getElementById('perm-modal-title').textContent=`${m.name} — 功能權限`;
   document.getElementById('perm-modal-info').textContent=`帳號：${m.username}　角色：${{manager:'管理人',coowner:'副管理員',org_owner:'組織負責人'}[m.role]||m.role}`;
+  const myPerms=currentUser?.permissions||{};
   const perms=m.permissions||{};
   const list=document.getElementById('perm-modal-list');
-  list.innerHTML=PERM_LIST.map(p=>{
+  // admin 看全部；org_owner 只看自己有的權限（不能給自己沒有的）
+  list.innerHTML=PERM_LIST.filter(p=>{
+    if(isSuperAdmin()) return true; // admin 看全部
+    // canAddAccount 永遠只有 admin 能給，org_owner 即使自己有也不能給出去
+    if(p.key==='canAddAccount') return false;
+    // org_owner：只能給自己擁有的其他權限
+    return hasPerm(p.key);
+  }).map(p=>{
     const isChecked=Object.keys(perms).length===0?(p.key==='canViewMgrRpt'):perms[p.key]===true;
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:${isChecked?'var(--blue-bg)':'var(--surface)'};" onclick="this.style.background=this.querySelector('input').checked?'var(--surface)':'var(--blue-bg)'">
       <input type="checkbox" data-perm="${p.key}" ${isChecked?'checked':''} style="width:16px;height:16px;accent-color:var(--blue);" onchange="this.closest('label').style.background=this.checked?'var(--blue-bg)':'var(--surface)'">
@@ -2744,6 +2770,8 @@ async function savePermissions(){
   document.querySelectorAll('#perm-modal-list input[type=checkbox]').forEach(cb=>{
     perms[cb.dataset.perm]=cb.checked;
   });
+  // 只有 admin 能開通 canAddAccount，非 admin 強制設為 false
+  if(!isSuperAdmin()) perms['canAddAccount']=false;
   m.permissions=perms;
   // 直接寫入 Supabase
   const {error}=await db.from('test_managers').update({permissions:perms}).eq('id',editingPermMgrId);
@@ -2779,9 +2807,9 @@ function deleteManager(id){
 function openRoomModal(id){
   if(!id){
     // 新增房間：只有 owner/coowner 可以，或管理人在自己有負責的地址才能新增
-    if(!isOwner()&&getVisibleAddrNames().length===0){ toast('權限不足'); return; }
+    if(!isStaff()&&getVisibleAddrNames().length===0){ toast('權限不足'); return; }
     // 管理人房間數上限檢查
-    if(!isOwner()&&currentUser?.role==='manager'){
+    if(!isSuperAdmin()&&!isOrgOwner()&&currentUser?.role==='manager'){
       const limit=currentUser.roomLimit||null;
       if(limit){
         const myAddrs=getVisibleAddrNames();
@@ -2840,7 +2868,7 @@ function saveRoom(){
   // 新增房間時不能選未分類
   if(!editingRoomId && addr==='未分類'){ toast('請選擇所屬地址，不能為未分類'); return; }
   const isPrepay = document.getElementById('elec-opt-prepay').style.border.includes('2px');
-  const data={name,rent:parseInt(document.getElementById('f-rent').value)||0,tenant:document.getElementById('f-tenant').value.trim(),phone:document.getElementById('f-phone').value.trim(),emergency:document.getElementById('f-emergency').value.trim(),checkin:document.getElementById('f-checkin').value,checkout:document.getElementById('f-checkout').value,deposit:parseInt(document.getElementById('f-deposit').value)||0,elecType:isPrepay?'prepay':'monthly',elec:parseInt(document.getElementById('f-elec').value)||0,elecAcc:document.getElementById('f-elec-acc').value.trim(),elecPrice:parseFloat(document.getElementById('f-elec-price').value)||0,elecBalance:parseInt(document.getElementById('f-elec-balance').value)||0,acc:document.getElementById('f-acc').value.trim(),note:document.getElementById('f-note').value.trim(),addr};
+  const data={name,rent:parseInt(document.getElementById('f-rent').value)||0,tenant:document.getElementById('f-tenant').value.trim(),phone:document.getElementById('f-phone').value.trim(),emergency:document.getElementById('f-emergency').value.trim(),checkin:document.getElementById('f-checkin').value,checkout:document.getElementById('f-checkout').value,deposit:parseInt(document.getElementById('f-deposit').value)||0,elecType:isPrepay?'prepay':'monthly',elec:parseInt(document.getElementById('f-elec').value)||0,elecAcc:document.getElementById('f-elec-acc').value.trim(),elecPrice:parseFloat(document.getElementById('f-elec-price').value)||0,elecBalance:parseInt(document.getElementById('f-elec-balance').value)||0,acc:document.getElementById('f-acc').value.trim(),bankLast5:(document.getElementById('f-bank-last5')?.value||'').trim(),note:document.getElementById('f-note').value.trim(),addr};
   if(editingRoomId){ const r=rooms.find(x=>x.id===editingRoomId); if(r) Object.assign(r,data); }
   else rooms.push({...data,id:'r'+Date.now()});
   rooms.sort((a,b)=>roomNameSort(a,b));
@@ -3042,23 +3070,20 @@ let elecTopupRoomId = null;
 function canAdjust(){
   if(!currentUser) return false;
   if(currentUser.role==='owner'||currentUser.role==='superadmin') return true;
-  if(currentUser.role==='org_owner'||currentUser.role==='coowner') return true;
-  return hasPerm('canAdjust'); // 一般管理人依權限設定
+  return hasPerm('canAdjust'); // org_owner / coowner / manager 全依 permissions
 }
 // canSeeAdjLog：能看到改帳記錄和改帳按鈕
 function canSeeAdjLog(r){
   if(!currentUser) return false;
   if(currentUser.role==='owner'||currentUser.role==='superadmin') return true;
-  if(currentUser.role==='org_owner') return true;
-  if(currentUser.role==='coowner') return true;
-  // 一般管理人：有 canAdjust 權限且負責此地址
+  // org_owner / coowner / manager 全依 hasPerm('canAdjust')
   if(!hasPerm('canAdjust')) return false;
   const addrObj=addresses.find(a=>a.name===(r.addr||''));
   return addrObj&&(addrObj.managers||[]).includes(currentUser.id);
 }
 
 function openAdjustModal(roomId, mk){
-  if(!canAdjust()){ toast('此功能僅 Admin 和副管理員可使用'); return; }
+  if(!hasPerm('canAdjust')&&!isSuperAdmin()&&!isOrgOwner()){ toast('您沒有改帳的權限'); return; }
   const r=rooms.find(x=>x.id===roomId); if(!r) return;
   const pay=(payments[mk]&&payments[mk][roomId])||{status:'unpaid'};
   const currentAmt=pay.adjustedAmount!=null?pay.adjustedAmount:getActualRent(r);
@@ -3163,7 +3188,7 @@ function markElecDone(roomId, topupId){
 }
 
 // ── 待修備忘錄 ──
-const REPAIR_OPTIONS = ['冷氣故障','熱水器故障','水管漏水','電燈不亮','門鎖故障','窗戶破損','牆壁滲水','廁所堵塞','網路故障','瓦斯問題'];
+const REPAIR_OPTIONS = ['冷氣故障','熱水器故障','水管漏水','門鎖故障','牆壁滲水','廁所堵塞','網路故障'];
 let repairRoomId = null;
 let selectedRepairs = new Set();
 
@@ -3231,7 +3256,8 @@ function markRepairDone(roomId, repId){
 function checkOverdueRepairs(){
   const today = new Date(); today.setHours(0,0,0,0);
   const overdueList = [];
-  rooms.forEach(r=>{
+  // 只顯示該管理人負責的房間的修繕逾期
+  getVisibleRooms().forEach(r=>{
     (r.repairs||[]).filter(rep=>rep.status==='pending').forEach(rep=>{
       const days = Math.floor((today-new Date(rep.date))/(1000*60*60*24));
       if(days>=5) overdueList.push({room:r.name,label:rep.label,days});
@@ -3252,6 +3278,7 @@ function checkOverdueRepairs(){
 let quickMatchRoomId = null;
 
 function openQuickMatch(){
+  if(!isSuperAdmin()&&!hasPerm('canQuickMatch')){ toast('您沒有快速對帳的權限'); return; }
   document.getElementById('qm-last5').value='';
   document.getElementById('qm-amount').value='';
   document.getElementById('qm-result').innerHTML='';
@@ -3337,6 +3364,8 @@ function quickMatchConfirm(){
 }
 
 function deleteRoom(id){
+  const delRoom=rooms.find(x=>x.id===id);
+  if(!delRoom||!canDeleteRoomCheck(delRoom)){ toast('您沒有刪除房間的權限'); return; }
   const r=rooms.find(x=>x.id===id);
   if(!canEditRoom(r)){ toast('權限不足'); return; }
   document.getElementById('delete-room-id').value=id;
@@ -3344,6 +3373,7 @@ function deleteRoom(id){
   document.getElementById('delete-room-modal').style.display='flex';
 }
 async function confirmDeleteRoom(){
+  if(!hasPerm('canDeleteRoom')&&!isSuperAdmin()){ toast('您沒有刪除房間的權限'); return; }
   const id=document.getElementById('delete-room-id').value;
   const input=document.getElementById('delete-confirm-username').value.trim();
   if(!input){ toast('請輸入帳號'); return; }
@@ -3484,6 +3514,7 @@ function doChangePw(){
 
 // ── 匯出 CSV ──
 function openExportModal(){
+  if(!isSuperAdmin()&&!hasPerm('canExport')){ toast('您沒有匯出 CSV 的權限'); return; }
   const sel=document.getElementById('exp-addr');
   sel.innerHTML='<option value="all">全部地址</option>'+getAddrNames().map(a=>`<option value="${a}">${a}</option>`).join('');
   document.getElementById('export-modal').style.display='flex';
@@ -3991,6 +4022,7 @@ function removeCustomExpense(i){
 }
 
 function exportMgrRpt(){
+  if(!isSuperAdmin()&&!hasPerm('canExport')){ toast('您沒有匯出報表的權限'); return; }
   const mk=mgrExpKey().split('__')[0];
   const [y,m]=mk.split('-').map(Number);
   const monthLabel=`${y}年${m}月`;
