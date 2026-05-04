@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/pay", "destination": "/pay.html" },
-    { "source": "/repair", "destination": "/repair.html" }
-  ]
-}
