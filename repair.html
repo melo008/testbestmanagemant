@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>報修通報</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Noto Sans TC',sans-serif;
+  background:#F7F6F2;
+  color:#1C1B18;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;
+  padding:1.5rem 1rem 3rem;
+}
+
+/* Header */
+.logo{text-align:center;margin-bottom:1.75rem;}
+.logo-icon{font-size:40px;margin-bottom:8px;}
+.logo h1{font-size:20px;font-weight:700;letter-spacing:-.3px;color:#1C1B18;}
+.logo p{font-size:13px;color:#A8A79E;margin-top:4px;}
+
+/* Card */
+.card{background:#fff;border:1px solid #E2E0D8;border-radius:16px;padding:1.5rem;width:100%;max-width:420px;box-shadow:0 2px 20px rgba(0,0,0,.06);}
+
+/* Steps */
+.step{margin-bottom:20px;}
+.step-label{font-size:11px;font-weight:600;color:#A8A79E;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
+
+/* Phone input */
+.phone-input{width:100%;padding:12px 14px;border:1.5px solid #E2E0D8;border-radius:10px;font-size:16px;font-family:inherit;color:#1C1B18;background:#F7F6F2;outline:none;transition:border-color .15s;}
+.phone-input:focus{border-color:#378ADD;background:#fff;}
+
+/* Repair type grid */
+.repair-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.repair-opt{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;
+  border:1.5px solid #E2E0D8;border-radius:10px;
+  font-size:13px;cursor:pointer;
+  background:#fff;transition:all .12s;
+  user-select:none;
+}
+.repair-opt input[type=checkbox]{display:none;}
+.repair-opt.checked{background:#EAF1FB;border-color:#378ADD;color:#185FA5;font-weight:500;}
+.repair-opt .opt-icon{font-size:18px;flex-shrink:0;}
+.repair-opt .opt-label{flex:1;line-height:1.3;}
+
+/* Custom input */
+.custom-input{
+  width:100%;padding:10px 12px;
+  border:1.5px solid #E2E0D8;border-radius:10px;
+  font-size:14px;font-family:inherit;color:#1C1B18;
+  background:#F7F6F2;outline:none;
+  transition:border-color .15s;
+}
+.custom-input:focus{border-color:#378ADD;background:#fff;}
+
+/* Textarea */
+.desc-area{
+  width:100%;padding:10px 12px;
+  border:1.5px solid #E2E0D8;border-radius:10px;
+  font-size:14px;font-family:inherit;color:#1C1B18;
+  background:#F7F6F2;outline:none;resize:vertical;min-height:90px;
+  transition:border-color .15s;
+}
+.desc-area:focus{border-color:#378ADD;background:#fff;}
+.desc-area::placeholder{color:#A8A79E;}
+
+/* Submit */
+.btn-submit{
+  width:100%;padding:14px;border:none;border-radius:12px;
+  background:#1C1B18;color:#fff;
+  font-size:15px;font-family:inherit;font-weight:700;
+  cursor:pointer;margin-top:4px;
+  transition:opacity .15s;
+}
+.btn-submit:hover{opacity:.87;}
+.btn-submit:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Result */
+.result-ok{background:#E1F5EE;border:1px solid #1D9E75;border-radius:10px;padding:16px;text-align:center;margin-top:14px;display:none;}
+.result-ok .ok-icon{font-size:36px;margin-bottom:8px;}
+.result-ok .ok-title{font-size:16px;font-weight:700;color:#0F6E56;margin-bottom:4px;}
+.result-ok .ok-sub{font-size:13px;color:#166534;}
+
+.result-err{background:#FCEBEB;border:1px solid #E24B4A;border-radius:10px;padding:12px 14px;font-size:13px;color:#A32D2D;margin-top:12px;display:none;}
+
+/* Divider */
+.divider{height:1px;background:#E2E0D8;margin:16px 0;}
+
+/* LINE hint */
+.line-hint{display:none;background:#F0FDF4;border-radius:20px;padding:6px 14px;font-size:13px;color:#0F6E56;text-align:center;margin-bottom:14px;}
+
+.footer{text-align:center;font-size:11px;color:#A8A79E;margin-top:1.5rem;}
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-icon">🔧</div>
+  <h1>報修通報</h1>
+  <p>填寫後管理人將盡快處理</p>
+</div>
+
+<div id="line-hint" class="line-hint"></div>
+
+<div class="card">
+
+  <!-- Step 1: 電話 -->
+  <div class="step">
+    <div class="step-label">Step 1　您的手機號碼</div>
+    <input type="tel" id="phone-input" class="phone-input"
+      placeholder="0912-345-678" inputmode="numeric" autocomplete="tel"
+      maxlength="20">
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Step 2: 問題類型 -->
+  <div class="step">
+    <div class="step-label">Step 2　問題類型（可多選）</div>
+    <div class="repair-grid" id="repair-grid">
+      <div class="repair-opt" data-val="冷氣故障" onclick="toggleOpt(this)">
+        <span class="opt-icon">❄️</span><span class="opt-label">冷氣故障</span>
+      </div>
+      <div class="repair-opt" data-val="熱水器故障" onclick="toggleOpt(this)">
+        <span class="opt-icon">🚿</span><span class="opt-label">熱水器故障</span>
+      </div>
+      <div class="repair-opt" data-val="水管漏水" onclick="toggleOpt(this)">
+        <span class="opt-icon">💧</span><span class="opt-label">水管漏水</span>
+      </div>
+      <div class="repair-opt" data-val="門鎖故障" onclick="toggleOpt(this)">
+        <span class="opt-icon">🔑</span><span class="opt-label">門鎖故障</span>
+      </div>
+      <div class="repair-opt" data-val="牆壁滲水" onclick="toggleOpt(this)">
+        <span class="opt-icon">🧱</span><span class="opt-label">牆壁滲水</span>
+      </div>
+      <div class="repair-opt" data-val="廁所堵塞" onclick="toggleOpt(this)">
+        <span class="opt-icon">🚽</span><span class="opt-label">廁所堵塞</span>
+      </div>
+      <div class="repair-opt" data-val="網路故障" onclick="toggleOpt(this)">
+        <span class="opt-icon">📡</span><span class="opt-label">網路故障</span>
+      </div>
+      <div class="repair-opt" data-val="其他" onclick="toggleOpt(this)">
+        <span class="opt-icon">🔧</span><span class="opt-label">其他問題</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <input type="text" id="custom-issue" class="custom-input" placeholder="其他問題說明（選填）">
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Step 3: 詳細說明 -->
+  <div class="step" style="margin-bottom:14px;">
+    <div class="step-label">Step 3　詳細說明</div>
+    <textarea id="repair-desc" class="desc-area"
+      placeholder="請描述問題狀況、發生位置、嚴重程度等..."></textarea>
+  </div>
+
+  <button class="btn-submit" id="submit-btn" onclick="submitRepair()">送出報修通報</button>
+
+  <div class="result-ok" id="result-ok">
+    <div class="ok-icon">✅</div>
+    <div class="ok-title">報修已送出！</div>
+    <div class="ok-sub">管理人已收到通知，將盡快安排處理<br>感謝您的回報</div>
+  </div>
+  <div class="result-err" id="result-err"></div>
+
+</div>
+
+<div class="footer">如有緊急狀況請直接聯絡管理人</div>
+
+<script>
+const LIFF_ID = '2009966566-EYTZKfs8';
+const SUPA_URL = 'https://fuvfvfmprxnhwxkexmtr.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1dmZ2Zm1wcnhuaHd4a2V4bXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjYxMTMsImV4cCI6MjA5MjM0MjExM30.ng7GT-watoOSlNhUTsGjloYvDdeKQsvZVLzHipJk9FY';
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let lineProfile = null;
+
+// ── LIFF 初始化 ──
+(async()=>{
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if(liff.isLoggedIn()){
+      lineProfile = await liff.getProfile();
+      const hint = document.getElementById('line-hint');
+      if(hint && lineProfile?.displayName){
+        hint.textContent = `👋 ${lineProfile.displayName}`;
+        hint.style.display = 'block';
+      }
+    }
+  }catch(e){ console.warn('LIFF:', e); }
+})();
+
+// ── 選項切換 ──
+function toggleOpt(el){
+  el.classList.toggle('checked');
+}
+
+function getSelectedTypes(){
+  return [...document.querySelectorAll('.repair-opt.checked')].map(el=>el.dataset.val);
+}
+
+// ── 送出報修 ──
+async function submitRepair(){
+  const phone = document.getElementById('phone-input').value.trim().replace(/[\s\-]/g,'');
+  const types = getSelectedTypes();
+  const custom = document.getElementById('custom-issue').value.trim();
+  const desc = document.getElementById('repair-desc').value.trim();
+
+  // 驗證
+  if(!phone){ showErr('請填寫手機號碼'); return; }
+  if(!types.length && !custom && !desc){ showErr('請選擇問題類型或填寫說明'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '送出中...';
+  hideErr();
+
+  try{
+    // 找對應的房間
+    const {data:rooms, error} = await db.from('test_rooms').select('id,name,addr,tenant,repairs')
+      .or(`phone.eq.${phone},phone.eq.${document.getElementById('phone-input').value.trim()},phone.ilike.%${phone}%`);
+
+    if(error) throw error;
+    const matched = (rooms||[]).filter(r=>r.tenant&&r.tenant.trim());
+
+    if(!matched.length){
+      showErr('查無此電話號碼的租客資料，請確認號碼是否正確');
+      return;
+    }
+
+    const room = matched[0];
+
+    // 建立報修項目
+    const allTypes = [...types, ...(custom?[custom]:[])];
+    const label = allTypes.length ? allTypes.join('、') : '問題回報';
+    const repairItem = {
+      id: 'r' + Date.now(),
+      label: label + (desc ? '：' + desc.slice(0,30) : ''),
+      desc: desc,
+      status: 'pending',
+      date: new Date().toISOString().split('T')[0],
+      source: 'tenant',
+      tenantPhone: phone,
+      tenantName: room.tenant
+    };
+
+    const currentRepairs = room.repairs || [];
+    currentRepairs.push(repairItem);
+
+    const {error: updateErr} = await db.from('test_rooms')
+      .update({repairs: currentRepairs})
+      .eq('id', room.id);
+
+    if(updateErr) throw updateErr;
+
+    // 成功
+    document.getElementById('result-ok').style.display = 'block';
+    btn.style.display = 'none';
+
+    // LINE 內自動關閉
+    if(typeof liff !== 'undefined' && liff.isInClient()){
+      setTimeout(()=>liff.closeWindow(), 3000);
+    }
+
+  }catch(e){
+    console.error(e);
+    showErr('送出失敗：' + e.message);
+  } finally {
+    if(btn.style.display !== 'none'){
+      btn.disabled = false; btn.textContent = '送出報修通報';
+    }
+  }
+}
+
+function showErr(msg){
+  const el = document.getElementById('result-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideErr(){
+  document.getElementById('result-err').style.display = 'none';
+}
+</script>
+</body>
+</html>
