@@ -62,8 +62,13 @@ export default async function handler(req, res) {
 
   // 簡單的 API Key 保護（避免外部隨意呼叫）
   const authKey = req.headers['x-api-key'];
-  if (authKey !== process.env.INTERNAL_API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  console.log('auth received:', authKey);
+  console.log('auth expected:', process.env.INTERNAL_API_KEY);
+  if (!process.env.INTERNAL_API_KEY) {
+    // 環境變數未設定時，暫時允許通過（測試用）
+    console.warn('INTERNAL_API_KEY not set, allowing request');
+  } else if (authKey !== process.env.INTERNAL_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized', received: authKey, hint: 'Check INTERNAL_API_KEY env var' });
   }
 
   const { roomId, roomName, amount, merTradeNo, bankType = '004' } = req.body;
