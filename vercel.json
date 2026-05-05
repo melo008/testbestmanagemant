@@ -2,5 +2,11 @@
   "rewrites": [
     { "source": "/pay", "destination": "/pay.html" },
     { "source": "/repair", "destination": "/repair.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-monthly",
+      "schedule": "0 2 1 * *"
+    }
   ]
 }
