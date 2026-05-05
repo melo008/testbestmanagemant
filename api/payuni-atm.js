@@ -1,5 +1,4 @@
-// api/payuni-atm.js - CommonJS 版本
-
+// api/payuni-atm.js
 const crypto = require('crypto');
 
 const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
@@ -13,7 +12,7 @@ const API_URL = IS_SANDBOX
 
 function aesEncrypt(plainText) {
   const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-  const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
+  const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   let enc = cipher.update(plainText, 'utf8', 'hex');
   enc += cipher.final('hex');
@@ -21,12 +20,16 @@ function aesEncrypt(plainText) {
 }
 
 function aesDecrypt(encHex) {
-  const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-  const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  let dec = decipher.update(encHex, 'hex', 'utf8');
-  dec += decipher.final('utf8');
-  return dec;
+  try {
+    const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
+    const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    let dec = decipher.update(encHex, 'hex', 'utf8');
+    dec += decipher.final('utf8');
+    return dec;
+  } catch(e) {
+    return '(decrypt failed: ' + e.message + ')';
+  }
 }
 
 function toQueryString(obj) {
@@ -39,44 +42,26 @@ function sha256Hash(encryptInfo) {
 }
 
 function getExpireDate() {
-  const now = new Date();
+  const now  = new Date();
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth
   const apiKey = req.headers['x-api-key'];
   if (process.env.INTERNAL_API_KEY && apiKey !== process.env.INTERNAL_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Parse body - Vercel auto-parses JSON
-  let body = req.body;
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch(e) { body = {}; }
-  }
-  body = body || {};
+  let body = req.body || {};
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
 
-  const roomId     = body.roomId;
-  const roomName   = body.roomName;
-  const amount     = body.amount;
-  const merTradeNo = body.merTradeNo;
-  const bankType   = body.bankType || '004';
-
-  console.log('Body received:', JSON.stringify(body));
-  console.log('Fields:', { roomId, amount, merTradeNo });
+  const { roomId, roomName, amount, merTradeNo, bankType = '700' } = body;
 
   if (!roomId || !amount || !merTradeNo) {
-    return res.status(400).json({
-      error: 'Missing required fields',
-      received: { roomId, amount, merTradeNo },
-      bodyType: typeof req.body,
-    });
+    return res.status(400).json({ error: 'Missing required fields', received: { roomId, amount, merTradeNo } });
   }
 
   if (!PAYUNI_MER_ID || !PAYUNI_HASH_KEY || !PAYUNI_HASH_IV) {
@@ -84,13 +69,14 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // PAYUNi ATM 只需要最少參數
     const encryptParams = {
       MerID:      PAYUNI_MER_ID,
       MerTradeNo: merTradeNo,
       TradeAmt:   Math.round(Number(amount)),
       Timestamp:  Math.floor(Date.now() / 1000),
       BankType:   bankType,
-      ProdDesc:   `${roomName || roomId}`,
+      ProdDesc:   (roomName || roomId).replace(/[^\w\s]/g, ''), // 移除特殊字元
       ExpireDate: getExpireDate(),
       NotifyURL:  process.env.PAYUNI_NOTIFY_URL || 'https://testbestmanagemant.vercel.app/api/payuni-webhook',
     };
@@ -99,7 +85,10 @@ module.exports = async function handler(req, res) {
     const encryptInfo = aesEncrypt(queryStr);
     const hashInfo    = sha256Hash(encryptInfo);
 
-    console.log('Calling PAYUNi:', API_URL);
+    console.log('=== PAYUNi Request ===');
+    console.log('URL:', API_URL);
+    console.log('Params:', queryStr);
+    console.log('MerID:', PAYUNI_MER_ID);
 
     const formBody = new URLSearchParams({
       MerID:       PAYUNI_MER_ID,
@@ -110,42 +99,47 @@ module.exports = async function handler(req, res) {
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'user-agent': 'payuni',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'user-agent': 'payuni' },
       body: formBody.toString(),
     });
 
     const text = await response.text();
-    console.log('PAYUNi response:', text);
+    console.log('=== PAYUNi Response ===');
+    console.log(text);
 
     let result;
-    try { result = JSON.parse(text); }
-    catch(e) { return res.status(500).json({ error: 'PAYUNi parse error', raw: text }); }
+    try { result = JSON.parse(text); } catch(e) { return res.status(500).json({ error: 'Parse error', raw: text }); }
 
-    if (result.Status === 'SUCCESS' && result.EncryptInfo) {
-      const dec    = aesDecrypt(result.EncryptInfo);
-      const params = Object.fromEntries(new URLSearchParams(dec));
-      console.log('Decrypted params:', params);
-
-      if (params.Status === 'SUCCESS' && params.PayNo) {
-        return res.status(200).json({
-          success:    true,
-          payNo:      params.PayNo,
-          bankType:   params.BankType,
-          tradeNo:    params.TradeNo,
-          expireDate: params.ExpireDate,
-          merTradeNo: params.MerTradeNo,
-        });
-      }
-      return res.status(500).json({ success: false, params });
+    // 無論成功失敗都嘗試解密 EncryptInfo
+    let decryptedInfo = null;
+    if (result.EncryptInfo) {
+      const dec = aesDecrypt(result.EncryptInfo);
+      decryptedInfo = Object.fromEntries(new URLSearchParams(dec));
+      console.log('Decrypted:', decryptedInfo);
     }
 
-    return res.status(500).json({ success: false, status: result.Status, raw: result });
+    if (result.Status === 'SUCCESS' && decryptedInfo?.Status === 'SUCCESS' && decryptedInfo?.PayNo) {
+      return res.status(200).json({
+        success:    true,
+        payNo:      decryptedInfo.PayNo,
+        bankType:   decryptedInfo.BankType,
+        tradeNo:    decryptedInfo.TradeNo,
+        expireDate: decryptedInfo.ExpireDate,
+        merTradeNo: decryptedInfo.MerTradeNo,
+      });
+    }
+
+    return res.status(500).json({
+      success:       false,
+      outerStatus:   result.Status,
+      innerStatus:   decryptedInfo?.Status,
+      innerMessage:  decryptedInfo?.Message,
+      decryptedInfo: decryptedInfo,
+      requestParams: encryptParams,
+    });
 
   } catch (err) {
-    console.error('PAYUNi error:', err);
+    console.error('Error:', err);
     return res.status(500).json({ error: err.message });
   }
 };
