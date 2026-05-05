@@ -1,5 +1,6 @@
-// api/payuni-atm.js
-import crypto from 'crypto';
+// api/payuni-atm.js - CommonJS 版本
+
+const crypto = require('crypto');
 
 const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
 const PAYUNI_HASH_KEY = process.env.PAYUNI_HASH_KEY;
@@ -43,25 +44,38 @@ function getExpireDate() {
   return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth
   const apiKey = req.headers['x-api-key'];
   if (process.env.INTERNAL_API_KEY && apiKey !== process.env.INTERNAL_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const body = req.body || {};
-  const { roomId, roomName, amount, merTradeNo, bankType = '004' } = body;
+  // Parse body - Vercel auto-parses JSON
+  let body = req.body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch(e) { body = {}; }
+  }
+  body = body || {};
 
-  console.log('Request body:', JSON.stringify(body));
+  const roomId     = body.roomId;
+  const roomName   = body.roomName;
+  const amount     = body.amount;
+  const merTradeNo = body.merTradeNo;
+  const bankType   = body.bankType || '004';
+
+  console.log('Body received:', JSON.stringify(body));
+  console.log('Fields:', { roomId, amount, merTradeNo });
 
   if (!roomId || !amount || !merTradeNo) {
     return res.status(400).json({
       error: 'Missing required fields',
-      received: { roomId, amount, merTradeNo }
+      received: { roomId, amount, merTradeNo },
+      bodyType: typeof req.body,
     });
   }
 
@@ -71,21 +85,21 @@ export default async function handler(req, res) {
 
   try {
     const encryptParams = {
-      MerID:       PAYUNI_MER_ID,
-      MerTradeNo:  merTradeNo,
-      TradeAmt:    Math.round(Number(amount)),
-      Timestamp:   Math.floor(Date.now() / 1000),
-      BankType:    bankType,
-      ProdDesc:    `${roomName || roomId}`,
-      ExpireDate:  getExpireDate(),
-      NotifyURL:   process.env.PAYUNI_NOTIFY_URL || 'https://testbestmanagemant.vercel.app/api/payuni-webhook',
+      MerID:      PAYUNI_MER_ID,
+      MerTradeNo: merTradeNo,
+      TradeAmt:   Math.round(Number(amount)),
+      Timestamp:  Math.floor(Date.now() / 1000),
+      BankType:   bankType,
+      ProdDesc:   `${roomName || roomId}`,
+      ExpireDate: getExpireDate(),
+      NotifyURL:  process.env.PAYUNI_NOTIFY_URL || 'https://testbestmanagemant.vercel.app/api/payuni-webhook',
     };
 
     const queryStr    = toQueryString(encryptParams);
     const encryptInfo = aesEncrypt(queryStr);
     const hashInfo    = sha256Hash(encryptInfo);
 
-    console.log('Calling:', API_URL);
+    console.log('Calling PAYUNi:', API_URL);
 
     const formBody = new URLSearchParams({
       MerID:       PAYUNI_MER_ID,
@@ -104,16 +118,16 @@ export default async function handler(req, res) {
     });
 
     const text = await response.text();
-    console.log('PAYUNi raw response:', text);
+    console.log('PAYUNi response:', text);
 
     let result;
     try { result = JSON.parse(text); }
-    catch { return res.status(500).json({ error: 'PAYUNi parse error', raw: text }); }
+    catch(e) { return res.status(500).json({ error: 'PAYUNi parse error', raw: text }); }
 
     if (result.Status === 'SUCCESS' && result.EncryptInfo) {
       const dec    = aesDecrypt(result.EncryptInfo);
       const params = Object.fromEntries(new URLSearchParams(dec));
-      console.log('Decrypted:', params);
+      console.log('Decrypted params:', params);
 
       if (params.Status === 'SUCCESS' && params.PayNo) {
         return res.status(200).json({
@@ -131,7 +145,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, status: result.Status, raw: result });
 
   } catch (err) {
-    console.error('Error:', err);
+    console.error('PAYUNi error:', err);
     return res.status(500).json({ error: err.message });
   }
-}
+};
