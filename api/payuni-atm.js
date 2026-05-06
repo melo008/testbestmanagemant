@@ -1,10 +1,12 @@
-// api/payuni-atm.js - AES-256-GCM 版本
+// api/payuni-atm.js
 const crypto = require('crypto');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
 const PAYUNI_HASH_KEY = process.env.PAYUNI_HASH_KEY;
 const PAYUNI_HASH_IV  = process.env.PAYUNI_HASH_IV;
 const IS_SANDBOX      = process.env.PAYUNI_SANDBOX === 'true';
+const FIXIE_URL       = process.env.FIXIE_URL; // 固定 IP proxy
 
 const API_URL = IS_SANDBOX
   ? 'https://sandbox-api.payuni.com.tw/api/atm'
@@ -18,20 +20,17 @@ function aesEncrypt(plainText) {
   let enc = cipher.update(plainText, 'utf8', 'hex');
   enc += cipher.final('hex');
   const tag = cipher.getAuthTag();
-  // PAYUNi 格式：hex + ':::' + base64(tag)
   return enc + ':::' + tag.toString('base64');
 }
 
 // AES-256-GCM 解密
 function aesDecrypt(encData) {
   try {
-    const parts = encData.split(':::');
-    const encHex = parts[0];
-    const tag = parts[1] ? Buffer.from(parts[1], 'base64') : null;
+    const [encHex, tagB64] = encData.split(':::');
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    if (tag) decipher.setAuthTag(tag);
+    if (tagB64) decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
     let dec = decipher.update(encHex, 'hex', 'utf8');
     dec += decipher.final('utf8');
     return dec;
@@ -94,8 +93,8 @@ module.exports = async function handler(req, res) {
     const hashInfo    = sha256Hash(encryptInfo);
 
     console.log('Params:', queryStr);
-    console.log('EncryptInfo:', encryptInfo.slice(0,50) + '...');
-    console.log('URL:', API_URL);
+    console.log('API URL:', API_URL);
+    console.log('Using proxy:', FIXIE_URL ? 'YES' : 'NO');
 
     const formBody = new URLSearchParams({
       MerID:       PAYUNI_MER_ID,
@@ -104,14 +103,22 @@ module.exports = async function handler(req, res) {
       HashInfo:    hashInfo,
     });
 
-    const response = await fetch(API_URL, {
+    // 如果有 FIXIE_URL 就走固定 IP proxy
+    const fetchOptions = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'user-agent': 'payuni' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'user-agent': 'payuni',
+      },
       body: formBody.toString(),
-    });
+    };
+    if (FIXIE_URL) {
+      fetchOptions.agent = new HttpsProxyAgent(FIXIE_URL);
+    }
 
+    const response = await fetch(API_URL, fetchOptions);
     const text = await response.text();
-    console.log('PAYUNi raw response:', text);
+    console.log('PAYUNi response:', text);
 
     let result;
     try { result = JSON.parse(text); } catch(e) { return res.status(500).json({ error: 'Parse error', raw: text }); }
@@ -120,7 +127,6 @@ module.exports = async function handler(req, res) {
     if (result.EncryptInfo) {
       const dec = aesDecrypt(result.EncryptInfo);
       if (dec) decryptedInfo = Object.fromEntries(new URLSearchParams(dec));
-      console.log('Decrypted:', decryptedInfo);
     }
 
     if (result.Status === 'SUCCESS' && decryptedInfo?.Status === 'SUCCESS' && decryptedInfo?.PayNo) {
