@@ -46,7 +46,7 @@ function toQueryString(obj) {
 }
 
 function sha256Hash(encryptInfo) {
-  const str = `HashKey=${PAYUNI_HASH_KEY}&${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`;
+  const str = `HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`;
   return crypto.createHash('sha256').update(str).digest('hex').toUpperCase();
 }
 
