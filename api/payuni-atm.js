@@ -1,4 +1,4 @@
-// api/payuni-atm.js
+// api/payuni-atm.js - AES-256-GCM 版本
 const crypto = require('crypto');
 
 const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
@@ -10,25 +10,34 @@ const API_URL = IS_SANDBOX
   ? 'https://sandbox-api.payuni.com.tw/api/atm'
   : 'https://api.payuni.com.tw/api/atm';
 
+// AES-256-GCM 加密
 function aesEncrypt(plainText) {
   const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
   const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let enc = cipher.update(plainText, 'utf8', 'hex');
   enc += cipher.final('hex');
-  return enc;
+  const tag = cipher.getAuthTag();
+  // PAYUNi 格式：hex + ':::' + base64(tag)
+  return enc + ':::' + tag.toString('base64');
 }
 
-function aesDecrypt(encHex) {
+// AES-256-GCM 解密
+function aesDecrypt(encData) {
   try {
+    const parts = encData.split(':::');
+    const encHex = parts[0];
+    const tag = parts[1] ? Buffer.from(parts[1], 'base64') : null;
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    if (tag) decipher.setAuthTag(tag);
     let dec = decipher.update(encHex, 'hex', 'utf8');
     dec += decipher.final('utf8');
     return dec;
   } catch(e) {
-    return '(decrypt failed: ' + e.message + ')';
+    console.error('Decrypt error:', e.message);
+    return null;
   }
 }
 
@@ -58,7 +67,7 @@ module.exports = async function handler(req, res) {
   let body = req.body || {};
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
 
-  const { roomId, roomName, amount, merTradeNo, bankType = '700' } = body;
+  const { roomId, roomName, amount, merTradeNo, bankType = '004' } = body;
 
   if (!roomId || !amount || !merTradeNo) {
     return res.status(400).json({ error: 'Missing required fields', received: { roomId, amount, merTradeNo } });
@@ -69,14 +78,13 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // PAYUNi ATM 只需要最少參數
     const encryptParams = {
       MerID:      PAYUNI_MER_ID,
       MerTradeNo: merTradeNo,
       TradeAmt:   Math.round(Number(amount)),
       Timestamp:  Math.floor(Date.now() / 1000),
       BankType:   bankType,
-      ProdDesc:   (roomName || roomId).replace(/[^\w\s]/g, ''), // 移除特殊字元
+      ProdDesc:   (roomName || roomId).replace(/[^\w\s]/g, ''),
       ExpireDate: getExpireDate(),
       NotifyURL:  process.env.PAYUNI_NOTIFY_URL || 'https://testbestmanagemant.vercel.app/api/payuni-webhook',
     };
@@ -85,10 +93,9 @@ module.exports = async function handler(req, res) {
     const encryptInfo = aesEncrypt(queryStr);
     const hashInfo    = sha256Hash(encryptInfo);
 
-    console.log('=== PAYUNi Request ===');
-    console.log('URL:', API_URL);
     console.log('Params:', queryStr);
-    console.log('MerID:', PAYUNI_MER_ID);
+    console.log('EncryptInfo:', encryptInfo.slice(0,50) + '...');
+    console.log('URL:', API_URL);
 
     const formBody = new URLSearchParams({
       MerID:       PAYUNI_MER_ID,
@@ -104,17 +111,15 @@ module.exports = async function handler(req, res) {
     });
 
     const text = await response.text();
-    console.log('=== PAYUNi Response ===');
-    console.log(text);
+    console.log('PAYUNi raw response:', text);
 
     let result;
     try { result = JSON.parse(text); } catch(e) { return res.status(500).json({ error: 'Parse error', raw: text }); }
 
-    // 無論成功失敗都嘗試解密 EncryptInfo
     let decryptedInfo = null;
     if (result.EncryptInfo) {
       const dec = aesDecrypt(result.EncryptInfo);
-      decryptedInfo = Object.fromEntries(new URLSearchParams(dec));
+      if (dec) decryptedInfo = Object.fromEntries(new URLSearchParams(dec));
       console.log('Decrypted:', decryptedInfo);
     }
 
@@ -130,12 +135,12 @@ module.exports = async function handler(req, res) {
     }
 
     return res.status(500).json({
-      success:       false,
-      outerStatus:   result.Status,
-      innerStatus:   decryptedInfo?.Status,
-      innerMessage:  decryptedInfo?.Message,
-      decryptedInfo: decryptedInfo,
-      requestParams: encryptParams,
+      success:      false,
+      outerStatus:  result.Status,
+      innerStatus:  decryptedInfo?.Status,
+      innerMessage: decryptedInfo?.Message,
+      decrypted:    decryptedInfo,
+      params:       encryptParams,
     });
 
   } catch (err) {
