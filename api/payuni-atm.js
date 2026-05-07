@@ -2,13 +2,17 @@ const crypto = require('crypto');
 const https = require('https');
 
 module.exports = async function handler(req, res) {
-  // 取得環境變數
+  // 檢查環境變數是否存在
   const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
+  
+  if (!PAYUNI_HASH_KEY || !PAYUNI_HASH_IV) {
+    return res.status(500).json({ success: false, error: "Vercel 環境變數未設定完全" });
+  }
 
   try {
-    const { amount, merTradeNo } = req.body;
+    const { amount, merTradeNo } = req.body || {};
 
-    // 1. 加密參數 (注意：這裡使用 JSON.stringify)
+    // 1. 加密參數
     const encryptParams = {
       MerID: PAYUNI_MER_ID,
       MerTradeNo: merTradeNo || `TEST${Date.now()}`,
@@ -33,7 +37,7 @@ module.exports = async function handler(req, res) {
     const hashStr = PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV;
     const hashInfo = crypto.createHash('sha256').update(hashStr).digest('hex').toUpperCase();
 
-    // 4. 發送請求 (寫死 hostname 確保網址正確)
+    // 4. 發送請求 - 這裡我已經把 hostname 改成純域名，絕對沒有 ://
     const postData = new URLSearchParams({
       MerID: PAYUNI_MER_ID,
       Version: "1.0",
@@ -42,7 +46,7 @@ module.exports = async function handler(req, res) {
     }).toString();
 
     const options = {
-      hostname: '://payuni.com.tw',
+      hostname: 'sandbox-api.payuni.com.tw', // ★ 檢查這裡，絕對不能有 https://
       port: 443,
       path: '/api/upp',
       method: 'POST',
@@ -60,15 +64,25 @@ module.exports = async function handler(req, res) {
           try { resolve(JSON.parse(data)); } catch (e) { resolve(data); }
         });
       });
-      request.on('error', (err) => reject(err));
+      request.on('error', (err) => {
+        // 如果連線失敗，回傳詳細錯誤
+        reject(err);
+      });
       request.write(postData);
       request.end();
     });
 
-    // 5. 回傳 PAYUNi 的回應
-    return res.status(200).json({ success: true, payuniResponse: result });
+    return res.status(200).json({ 
+      success: true, 
+      status: "連線成功",
+      payuniResponse: result 
+    });
 
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: "連線發生錯誤",
+      detail: err.message // 檢查這裡是否還有 ENOTFOUND
+    });
   }
 };
