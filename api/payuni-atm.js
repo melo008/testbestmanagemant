@@ -2,35 +2,30 @@ const crypto = require('crypto');
 
 export default async function handler(req, res) {
   const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
-  
+
   try {
-    // 1. 加密參數
     const encryptParams = {
       MerID:      PAYUNI_MER_ID,
       MerTradeNo: `T${Date.now()}`,
       TradeAmt:   100,
       Timestamp:  Math.floor(Date.now() / 1000),
-      BankType:   "004", // ATM 測試
+      BankType:   "004", 
       ProdDesc:   "訂單測試",
       ExpireDate: "2026-12-31",
-      NotifyURL:  "https://vercel.app",
+      NotifyURL:  "https://test.com",
     };
 
     const plainText = JSON.stringify(encryptParams);
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     
-    // 2. 加密與簽章
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encryptInfo = cipher.update(plainText, 'utf8', 'hex') + cipher.final('hex');
     const hashInfo = crypto.createHash('sha256')
       .update(`HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`)
       .digest('hex').toUpperCase();
 
-    // 3. 建立一個自動提交的 HTML 表單
-    // 這能繞過 Vercel 伺服器連線 PAYUNi 的逾時問題，改由使用者的瀏覽器直接送出
-       // 3. 建立一個自動提交的 HTML 表單
-    // ★ 網址一定要改成 sandbox-api 開頭的這個路徑
+    // ★ 注意：這裡的網址必須是完整路徑
     const apiUrl = "https://payuni.com.tw";
     
     const html = `
@@ -46,7 +41,6 @@ export default async function handler(req, res) {
       </body>
       </html>
     `;
-
 
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(html);
