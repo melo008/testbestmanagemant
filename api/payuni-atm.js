@@ -2,13 +2,18 @@ const crypto = require('crypto');
 
 // ...前面的設定...
 
-module.exports = async function handler(req, res) {
-  // ★ 就是放這裡！放在最前面，後面的程式碼就不會被執行到，直接回傳結果。
-  return res.status(200).json({ message: "API 活著" });
 
-  // 以下原本的程式碼會被暫時跳過
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  // ...
+module.exports = async function handler(req, res) {
+  // 測試環境變數有沒有讀到
+  return res.status(200).json({
+    message: "API 有動，環境變數檢查中",
+    hasKey: !!process.env.PAYUNI_HASH_KEY,
+    hasIv: !!process.env.PAYUNI_HASH_IV,
+    merId: process.env.PAYUNI_MER_ID || "未設定",
+    nodeVersion: process.version
+  });
+  
+  // 後面原本的代碼...
 
 
 // 修正後的 AES-256-CBC 加密
