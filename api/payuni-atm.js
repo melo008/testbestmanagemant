@@ -1,21 +1,18 @@
-// api/payuni-atm.js
+// api/payuni-atm.js - 無外部依賴版本
 const crypto = require('crypto');
-const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
 const PAYUNI_HASH_KEY = process.env.PAYUNI_HASH_KEY;
 const PAYUNI_HASH_IV  = process.env.PAYUNI_HASH_IV;
 const IS_SANDBOX      = process.env.PAYUNI_SANDBOX === 'true';
-const FIXIE_URL       = process.env.FIXIE_URL; // 固定 IP proxy
 
 const API_URL = IS_SANDBOX
   ? 'https://sandbox-api.payuni.com.tw/api/atm'
   : 'https://api.payuni.com.tw/api/atm';
 
-// AES-256-GCM 加密
 function aesEncrypt(plainText) {
   const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-  const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
+  const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let enc = cipher.update(plainText, 'utf8', 'hex');
   enc += cipher.final('hex');
@@ -23,12 +20,11 @@ function aesEncrypt(plainText) {
   return enc + ':::' + tag.toString('base64');
 }
 
-// AES-256-GCM 解密
 function aesDecrypt(encData) {
   try {
     const [encHex, tagB64] = encData.split(':::');
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-    const iv  = Buffer.from(PAYUNI_HASH_IV,  'utf8');
+    const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
     if (tagB64) decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
     let dec = decipher.update(encHex, 'hex', 'utf8');
@@ -64,16 +60,21 @@ module.exports = async function handler(req, res) {
   }
 
   let body = req.body || {};
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
-
-  const { roomId, roomName, amount, merTradeNo, bankType = '004' } = body;
-
-  if (!roomId || !amount || !merTradeNo) {
-    return res.status(400).json({ error: 'Missing required fields', received: { roomId, amount, merTradeNo } });
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch(e) { body = {}; }
   }
 
-  if (!PAYUNI_MER_ID || !PAYUNI_HASH_KEY || !PAYUNI_HASH_IV) {
-    return res.status(500).json({ error: 'PAYUNi env vars not configured' });
+  const roomId     = body.roomId;
+  const roomName   = body.roomName;
+  const amount     = body.amount;
+  const merTradeNo = body.merTradeNo;
+  const bankType   = body.bankType || '004';
+
+  if (!roomId || !amount || !merTradeNo) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      received: { roomId, amount, merTradeNo },
+    });
   }
 
   try {
@@ -92,9 +93,8 @@ module.exports = async function handler(req, res) {
     const encryptInfo = aesEncrypt(queryStr);
     const hashInfo    = sha256Hash(encryptInfo);
 
+    console.log('Calling PAYUNi:', API_URL);
     console.log('Params:', queryStr);
-    console.log('API URL:', API_URL);
-    console.log('Using proxy:', FIXIE_URL ? 'YES' : 'NO');
 
     const formBody = new URLSearchParams({
       MerID:       PAYUNI_MER_ID,
@@ -103,30 +103,27 @@ module.exports = async function handler(req, res) {
       HashInfo:    hashInfo,
     });
 
-    // 如果有 FIXIE_URL 就走固定 IP proxy
-    const fetchOptions = {
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'user-agent': 'payuni',
       },
       body: formBody.toString(),
-    };
-    if (FIXIE_URL) {
-      fetchOptions.agent = new HttpsProxyAgent(FIXIE_URL);
-    }
+    });
 
-    const response = await fetch(API_URL, fetchOptions);
     const text = await response.text();
     console.log('PAYUNi response:', text);
 
     let result;
-    try { result = JSON.parse(text); } catch(e) { return res.status(500).json({ error: 'Parse error', raw: text }); }
+    try { result = JSON.parse(text); }
+    catch(e) { return res.status(500).json({ error: 'Parse error', raw: text }); }
 
     let decryptedInfo = null;
     if (result.EncryptInfo) {
       const dec = aesDecrypt(result.EncryptInfo);
       if (dec) decryptedInfo = Object.fromEntries(new URLSearchParams(dec));
+      console.log('Decrypted:', decryptedInfo);
     }
 
     if (result.Status === 'SUCCESS' && decryptedInfo?.Status === 'SUCCESS' && decryptedInfo?.PayNo) {
