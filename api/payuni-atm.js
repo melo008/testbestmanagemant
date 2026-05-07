@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       </head>
       <body>
         <!-- 加了 [0] 確保 JS 一定抓得到這張表單 -->
-        <form method="POST" action="https://payuni.com.tw">
+        <form method="POST" action="https://PAYUNi.com.tw">
           <input type="hidden" name="MerID" value="${PAYUNI_MER_ID}">
           <input type="hidden" name="Version" value="1.0">
           <input type="hidden" name="EncryptInfo" value="${encryptInfo}">
