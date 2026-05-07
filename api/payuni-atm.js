@@ -1,45 +1,42 @@
-// 3. SHA256 簽章 (嘗試直接相加)
-const hashStr = PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV;
-const hashInfo = crypto.createHash('sha256').update(hashStr).digest('hex').toUpperCase();
-
+const crypto = require('crypto');
+const https = require('https');
 
 module.exports = async function handler(req, res) {
-  // 檢查環境變數是否存在
   const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
   
   if (!PAYUNI_HASH_KEY || !PAYUNI_HASH_IV) {
-    return res.status(500).json({ success: false, error: "Vercel 環境變數未設定完全" });
+    return res.status(500).json({ error: "環境變數未設定" });
   }
 
   try {
     const { amount, merTradeNo } = req.body || {};
 
-    // 1. 加密參數
+    // 1. 準備加密參數 (確保 TradeAmt 是整數)
     const encryptParams = {
       MerID: PAYUNI_MER_ID,
-      MerTradeNo: merTradeNo || `TEST${Date.now()}`,
+      MerTradeNo: merTradeNo || `T${Date.now()}`,
       TradeAmt: Math.round(Number(amount || 100)),
       Timestamp: Math.floor(Date.now() / 1000),
       BankType: "004",
-      ProdDesc: "Sandbox Test",
+      ProdDesc: "Payment Test",
       ExpireDate: "2026-12-31",
       NotifyURL: "https://vercel.app",
     };
 
     const plainText = JSON.stringify(encryptParams);
+    
+    // 2. AES-256-CBC 加密 (Hex 格式)
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv = Buffer.from(PAYUNI_HASH_IV, 'utf8');
-    
-    // 2. AES-256-CBC 加密
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encryptInfo = cipher.update(plainText, 'utf8', 'hex');
     encryptInfo += cipher.final('hex');
 
-    // 3. SHA256 簽章
+    // 3. ★ HashInfo 簽章 (採用選項 A：直接相加，不加 &)
     const hashStr = PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV;
     const hashInfo = crypto.createHash('sha256').update(hashStr).digest('hex').toUpperCase();
 
-    // 4. 發送請求 - 這裡我已經把 hostname 改成純域名，絕對沒有 ://
+    // 4. 發送請求
     const postData = new URLSearchParams({
       MerID: PAYUNI_MER_ID,
       Version: "1.0",
@@ -48,7 +45,7 @@ module.exports = async function handler(req, res) {
     }).toString();
 
     const options = {
-      hostname: 'sandbox-api.payuni.com.tw', // ★ 檢查這裡，絕對不能有 https://
+      hostname: '://payuni.com.tw',
       port: 443,
       path: '/api/upp',
       method: 'POST',
@@ -62,29 +59,20 @@ module.exports = async function handler(req, res) {
       const request = https.request(options, (response) => {
         let data = '';
         response.on('data', (chunk) => { data += chunk; });
-        response.on('end', () => {
-          try { resolve(JSON.parse(data)); } catch (e) { resolve(data); }
-        });
+        response.on('end', () => resolve(data)); // UPP 回傳 HTML，所以不跑 JSON.parse
       });
-      request.on('error', (err) => {
-        // 如果連線失敗，回傳詳細錯誤
-        reject(err);
-      });
+      request.on('error', (err) => reject(err));
       request.write(postData);
       request.end();
     });
 
+    // 5. 輸出結果
     return res.status(200).json({ 
       success: true, 
-      status: "連線成功",
       payuniResponse: result 
     });
 
   } catch (err) {
-    return res.status(500).json({ 
-      success: false, 
-      error: "連線發生錯誤",
-      detail: err.message // 檢查這裡是否還有 ENOTFOUND
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
