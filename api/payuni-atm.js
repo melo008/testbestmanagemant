@@ -29,6 +29,8 @@ export default async function handler(req, res) {
 
     // 3. 建立一個自動提交的 HTML 表單
     // 這能繞過 Vercel 伺服器連線 PAYUNi 的逾時問題，改由使用者的瀏覽器直接送出
+       // 3. 建立一個自動提交的 HTML 表單
+    // ★ 網址一定要改成 sandbox-api 開頭的這個路徑
     const apiUrl = "https://payuni.com.tw";
     
     const html = `
@@ -44,6 +46,7 @@ export default async function handler(req, res) {
       </body>
       </html>
     `;
+
 
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(html);
