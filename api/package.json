@@ -1,8 +1,0 @@
-{
-  "name": "hao-management-api",
-  "version": "1.0.0",
-  "dependencies": {
-    "https-proxy-agent": "^7.0.4",
-    "@supabase/supabase-js": "^2.0.0"
-  }
-}
