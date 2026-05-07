@@ -26,17 +26,31 @@ export default async function handler(req, res) {
       .digest('hex').toUpperCase();
 
     // 我直接把「收錢櫃檯」的完整網址寫在 action 裡面了
-    const html = `
+     const html = `
       <html>
-      <head><title>正在前往支付頁面</title></head>
-      <body onload="document.forms.submit()">
+      <head>
+        <title>正在前往支付頁面</title>
+        <meta charset="utf-8">
+      </head>
+      <body>
+        <!-- 加了 [0] 確保 JS 一定抓得到這張表單 -->
         <form method="POST" action="https://payuni.com.tw">
           <input type="hidden" name="MerID" value="${PAYUNI_MER_ID}">
           <input type="hidden" name="Version" value="1.0">
           <input type="hidden" name="EncryptInfo" value="${encryptInfo}">
           <input type="hidden" name="HashInfo" value="${hashInfo}">
+          <!-- 如果自動跳轉失敗，使用者還可以手動點按鈕 -->
+          <noscript><button type="submit">點擊此處繼續付款</button></noscript>
         </form>
-        <p>正在前往 PAYUNi 測試付款頁面...</p>
+        
+        <script>
+          // 強制執行提交
+          window.onload = function() {
+            document.forms[0].submit();
+          };
+        </script>
+        
+        <p>正在前往 PAYUNi 測試付款頁面，請稍候...</p>
       </body>
       </html>
     `;
