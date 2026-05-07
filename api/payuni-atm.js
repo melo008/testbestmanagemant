@@ -1,134 +1,73 @@
-// api/payuni-atm.js - CBC + JSON.stringify 格式
 const crypto = require('crypto');
 
-const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
-const PAYUNI_HASH_KEY = process.env.PAYUNI_HASH_KEY;
-const PAYUNI_HASH_IV  = process.env.PAYUNI_HASH_IV;
-const IS_SANDBOX      = process.env.PAYUNI_SANDBOX === 'true';
+// 必須使用 /api/atm 才是後端直接取號的網址
+const API_URL = "https://payuni.com.tw";
 
-const API_URL = IS_SANDBOX
-  ? 'https://sandbox-api.payuni.com.tw/api/atm'
-  : 'https://api.payuni.com.tw/api/atm';
-
-function aesEncrypt(plainText) {
-  const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-  const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  return cipher.update(plainText, 'utf8', 'hex') + cipher.final('hex');
-}
-
-function aesDecrypt(encHex) {
-  try {
-    const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-    const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    return decipher.update(encHex, 'hex', 'utf8') + decipher.final('utf8');
-  } catch(e) {
-    console.error('Decrypt error:', e.message);
-    return null;
-  }
-}
-
-function sha256Hash(encryptInfo) {
-  const str = `HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`;
-  return crypto.createHash('sha256').update(str).digest('hex').toUpperCase();
-}
-
-function getExpireDate() {
-  const now  = new Date();
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
-}
-
-module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const apiKey = req.headers['x-api-key'];
-  if (process.env.INTERNAL_API_KEY && apiKey !== process.env.INTERNAL_API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  let body = req.body || {};
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
-
-  const { roomId, roomName, amount, merTradeNo, bankType = '004' } = body;
-
-  if (!roomId || !amount || !merTradeNo) {
-    return res.status(400).json({ error: 'Missing required fields', received: { roomId, amount, merTradeNo } });
-  }
+export default async function handler(req, res) {
+  const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
 
   try {
+    // 1. 準備加密參數
     const encryptParams = {
       MerID:      PAYUNI_MER_ID,
-      MerTradeNo: merTradeNo,
-      TradeAmt:   Math.round(Number(amount)),
+      MerTradeNo: `T${Date.now()}`,
+      TradeAmt:   100,
       Timestamp:  Math.floor(Date.now() / 1000),
-      BankType:   bankType,
-      ProdDesc:   (roomName || roomId).replace(/[^\w\s]/g, ''),
-      ExpireDate: getExpireDate(),
-      NotifyURL:  process.env.PAYUNI_NOTIFY_URL || 'https://testbestmanagemant.vercel.app/api/payuni-webhook',
+      BankType:   "004", // 004 為台灣銀行，可依手冊更換
+      ProdDesc:   "直接取號測試",
+      ExpireDate: "2026-12-31",
+      NotifyURL:  "https://vercel.app",
     };
 
-    // 用 JSON.stringify（跟你成功的版本一樣）
-    const plainText   = JSON.stringify(encryptParams);
-    const encryptInfo = aesEncrypt(plainText);
-    const hashInfo    = sha256Hash(encryptInfo);
+    const plainText = JSON.stringify(encryptParams);
+    const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
+    const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
+    
+    // AES-256-CBC 加密
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    let encryptInfo = cipher.update(plainText, 'utf8', 'hex') + cipher.final('hex');
 
-    console.log('Calling:', API_URL);
-    console.log('PlainText:', plainText);
+    // SHA256 簽章
+    const hashStr = PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV;
+    const hashInfo = crypto.createHash('sha256').update(hashStr).digest('hex').toUpperCase();
 
-    const formBody = new URLSearchParams({
-      MerID:       PAYUNI_MER_ID,
-      Version:     '1.0',
-      EncryptInfo: encryptInfo,
-      HashInfo:    hashInfo,
-    });
-
+    // 2. 向 PAYUNi 發送 POST 請求
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'user-agent': 'payuni' },
-      body: formBody.toString(),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        MerID:       PAYUNI_MER_ID,
+        Version:     "1.0",
+        EncryptInfo: encryptInfo,
+        HashInfo:    hashInfo,
+      })
     });
 
-    const text = await response.text();
-    console.log('PAYUNi response:', text);
+    const result = await response.json();
 
-    let result;
-    try { result = JSON.parse(text); }
-    catch(e) { return res.status(500).json({ error: 'Parse error', raw: text }); }
-
-    let decryptedInfo = null;
+    // 3. 解密 PAYUNi 回傳的結果
     if (result.EncryptInfo) {
-      const dec = aesDecrypt(result.EncryptInfo);
-      if (dec) {
-        try { decryptedInfo = JSON.parse(dec); }
-        catch(e) { decryptedInfo = { raw: dec }; }
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let dec = decipher.update(result.EncryptInfo, 'hex', 'utf8') + decipher.final('utf8');
+      const decryptedData = JSON.parse(dec);
+
+      if (decryptedData.Status === 'SUCCESS') {
+        // ★ 這裡就是你要的帳號資訊
+        return res.status(200).json({
+          success: true,
+          bankCode: decryptedData.BankCode, // 銀行代碼
+          payNo:    decryptedData.PayNo,    // 虛擬帳號 ★
+          expire:   decryptedData.ExpireDate,
+          amount:   decryptedData.TradeAmt
+        });
+      } else {
+        return res.status(400).json({ success: false, message: decryptedData.Message });
       }
-      console.log('Decrypted:', decryptedInfo);
     }
 
-    if (result.Status === 'SUCCESS' && decryptedInfo?.Status === 'SUCCESS' && decryptedInfo?.PayNo) {
-      return res.status(200).json({
-        success:    true,
-        payNo:      decryptedInfo.PayNo,
-        bankType:   decryptedInfo.BankType,
-        tradeNo:    decryptedInfo.TradeNo,
-        expireDate: decryptedInfo.ExpireDate,
-        merTradeNo: decryptedInfo.MerTradeNo,
-      });
-    }
-
-    return res.status(500).json({
-      success:      false,
-      outerStatus:  result.Status,
-      innerStatus:  decryptedInfo?.Status,
-      innerMessage: decryptedInfo?.Message,
-      decrypted:    decryptedInfo,
-      params:       encryptParams,
-    });
+    return res.status(500).json({ success: false, message: "取號失敗", raw: result });
 
   } catch (err) {
-    console.error('Error:', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
-};
+}
