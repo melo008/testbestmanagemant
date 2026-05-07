@@ -1,4 +1,4 @@
-// api/payuni-atm.js - 無外部依賴版本
+// api/payuni-atm.js - Base64 GCM 版本（符合 PAYUNi PHP SDK 格式）
 const crypto = require('crypto');
 
 const PAYUNI_MER_ID   = process.env.PAYUNI_MER_ID;
@@ -10,26 +10,29 @@ const API_URL = IS_SANDBOX
   ? 'https://sandbox-api.payuni.com.tw/api/atm'
   : 'https://api.payuni.com.tw/api/atm';
 
+// AES-256-GCM 加密，輸出 Base64（與 PHP openssl_encrypt 相同）
 function aesEncrypt(plainText) {
   const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
   const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  let enc = cipher.update(plainText, 'utf8', 'hex');
-  enc += cipher.final('hex');
+  const enc = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return enc + ':::' + tag.toString('base64');
+  // PHP 格式：ciphertext + tag，整個做 base64
+  return Buffer.concat([enc, tag]).toString('base64');
 }
 
-function aesDecrypt(encData) {
+// AES-256-GCM 解密（Base64 輸入）
+function aesDecrypt(base64Data) {
   try {
-    const [encHex, tagB64] = encData.split(':::');
+    const buf = Buffer.from(base64Data, 'base64');
+    const tagLen = 16;
+    const encBuf = buf.slice(0, buf.length - tagLen);
+    const tag    = buf.slice(buf.length - tagLen);
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    if (tagB64) decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
-    let dec = decipher.update(encHex, 'hex', 'utf8');
-    dec += decipher.final('utf8');
-    return dec;
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encBuf), decipher.final()]).toString('utf8');
   } catch(e) {
     console.error('Decrypt error:', e.message);
     return null;
@@ -60,21 +63,12 @@ module.exports = async function handler(req, res) {
   }
 
   let body = req.body || {};
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch(e) { body = {}; }
-  }
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
 
-  const roomId     = body.roomId;
-  const roomName   = body.roomName;
-  const amount     = body.amount;
-  const merTradeNo = body.merTradeNo;
-  const bankType   = body.bankType || '004';
+  const { roomId, roomName, amount, merTradeNo, bankType = '004' } = body;
 
   if (!roomId || !amount || !merTradeNo) {
-    return res.status(400).json({
-      error: 'Missing required fields',
-      received: { roomId, amount, merTradeNo },
-    });
+    return res.status(400).json({ error: 'Missing required fields', received: { roomId, amount, merTradeNo } });
   }
 
   try {
@@ -93,8 +87,9 @@ module.exports = async function handler(req, res) {
     const encryptInfo = aesEncrypt(queryStr);
     const hashInfo    = sha256Hash(encryptInfo);
 
-    console.log('Calling PAYUNi:', API_URL);
+    console.log('Calling:', API_URL);
     console.log('Params:', queryStr);
+    console.log('EncryptInfo (base64, first 50):', encryptInfo.slice(0,50));
 
     const formBody = new URLSearchParams({
       MerID:       PAYUNI_MER_ID,
@@ -105,10 +100,7 @@ module.exports = async function handler(req, res) {
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'user-agent': 'payuni',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'user-agent': 'payuni' },
       body: formBody.toString(),
     });
 
@@ -122,7 +114,10 @@ module.exports = async function handler(req, res) {
     let decryptedInfo = null;
     if (result.EncryptInfo) {
       const dec = aesDecrypt(result.EncryptInfo);
-      if (dec) decryptedInfo = Object.fromEntries(new URLSearchParams(dec));
+      if (dec) {
+        try { decryptedInfo = Object.fromEntries(new URLSearchParams(dec)); }
+        catch(e) { decryptedInfo = { raw: dec }; }
+      }
       console.log('Decrypted:', decryptedInfo);
     }
 
