@@ -10,28 +10,28 @@ const API_URL = IS_SANDBOX
   ? 'https://sandbox-api.payuni.com.tw/api/atm'
   : 'https://api.payuni.com.tw/api/atm';
 
-// AES-256-GCM 加密，輸出 Base64（與 PHP openssl_encrypt 相同）
+// AES-256-GCM 加密
+// PHP 格式：base64(ciphertext) + ":::" + base64(tag)
 function aesEncrypt(plainText) {
   const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
   const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const enc = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  // PHP 格式：ciphertext + tag，整個做 base64
-  return Buffer.concat([enc, tag]).toString('base64');
+  return enc.toString('base64') + ':::' + tag.toString('base64');
 }
 
-// AES-256-GCM 解密（Base64 輸入）
-function aesDecrypt(base64Data) {
+// AES-256-GCM 解密：格式 base64(cipher):::base64(tag)
+function aesDecrypt(encData) {
   try {
-    const buf = Buffer.from(base64Data, 'base64');
-    const tagLen = 16;
-    const encBuf = buf.slice(0, buf.length - tagLen);
-    const tag    = buf.slice(buf.length - tagLen);
+    const sepIdx = encData.lastIndexOf(':::');
+    const encB64 = sepIdx >= 0 ? encData.slice(0, sepIdx) : encData;
+    const tagB64 = sepIdx >= 0 ? encData.slice(sepIdx + 3) : null;
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
+    if (tagB64) decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
+    const encBuf = Buffer.from(encB64, 'base64');
     return Buffer.concat([decipher.update(encBuf), decipher.final()]).toString('utf8');
   } catch(e) {
     console.error('Decrypt error:', e.message);
