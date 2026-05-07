@@ -1,5 +1,7 @@
-const crypto = require('crypto');
-const https = require('https');
+// 3. SHA256 簽章 (嘗試直接相加)
+const hashStr = PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV;
+const hashInfo = crypto.createHash('sha256').update(hashStr).digest('hex').toUpperCase();
+
 
 module.exports = async function handler(req, res) {
   // 檢查環境變數是否存在
