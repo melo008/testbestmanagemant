@@ -1,41 +1,52 @@
 const crypto = require('crypto');
-const https = require('https');
 
 export default async function handler(req, res) {
   const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
   
   try {
+    // 1. 加密參數
     const encryptParams = {
-      MerID: PAYUNI_MER_ID,
+      MerID:      PAYUNI_MER_ID,
       MerTradeNo: `T${Date.now()}`,
-      TradeAmt: 100,
-      Timestamp: Math.floor(Date.now() / 1000),
-      BankType: "004",
-      ProdDesc: "Test",
+      TradeAmt:   100,
+      Timestamp:  Math.floor(Date.now() / 1000),
+      BankType:   "004", // ATM 測試
+      ProdDesc:   "訂單測試",
       ExpireDate: "2026-12-31",
-      NotifyURL: "https://test.com",
+      NotifyURL:  "https://vercel.app",
     };
 
     const plainText = JSON.stringify(encryptParams);
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     
+    // 2. 加密與簽章
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encryptInfo = cipher.update(plainText, 'utf8', 'hex') + cipher.final('hex');
-    const hashInfo = crypto.createHash('sha256').update(`HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`).digest('hex').toUpperCase();
+    const hashInfo = crypto.createHash('sha256')
+      .update(`HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`)
+      .digest('hex').toUpperCase();
 
-    // 為了避免逾時，我們先「只回傳加密後的資料」
-    // 你可以拿這串資料直接去打 PAYUNi 官網測試
-    return res.status(200).json({
-      readyToPost: true,
-      apiUrl: "https://payuni.com.tw",
-      data: {
-        MerID: PAYUNI_MER_ID,
-        Version: "1.0",
-        EncryptInfo: encryptInfo,
-        HashInfo: hashInfo
-      }
-    });
+    // 3. 建立一個自動提交的 HTML 表單
+    // 這能繞過 Vercel 伺服器連線 PAYUNi 的逾時問題，改由使用者的瀏覽器直接送出
+    const apiUrl = "https://payuni.com.tw";
+    
+    const html = `
+      <html>
+      <body onload="document.forms[0].submit()">
+        <form method="POST" action="${apiUrl}">
+          <input type="hidden" name="MerID" value="${PAYUNI_MER_ID}">
+          <input type="hidden" name="Version" value="1.0">
+          <input type="hidden" name="EncryptInfo" value="${encryptInfo}">
+          <input type="hidden" name="HashInfo" value="${hashInfo}">
+        </form>
+        <p>正在前往 PAYUNi 付款頁面...</p>
+      </body>
+      </html>
+    `;
+
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(html);
 
   } catch (err) {
     return res.status(500).json({ error: err.message });
