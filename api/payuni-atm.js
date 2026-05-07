@@ -2,39 +2,44 @@ const crypto = require('crypto');
 const https = require('https');
 
 export default async function handler(req, res) {
+  // 只抓取必要的環境變數
   const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
+  
+  if (!PAYUNI_HASH_KEY || !PAYUNI_HASH_IV) {
+    return res.status(500).json({ error: "環境變數 PAYUNI_HASH_KEY 或 IV 未設定" });
+  }
 
   try {
-    // 1. 準備加密參數
+    // 1. 準備加密參數 (直接取號模式)
     const encryptParams = {
-      MerID:      PAYUNI_MER_ID,
+      MerID: PAYUNI_MER_ID,
       MerTradeNo: `T${Date.now()}`,
-      TradeAmt:   100,
-      Timestamp:  Math.floor(Date.now() / 1000),
-      BankType:   "004", // 預設台銀
-      ProdDesc:   "ATM 直接取號",
+      TradeAmt: 100,
+      Timestamp: Math.floor(Date.now() / 1000),
+      BankType: "004", // 預設台銀
+      ProdDesc: "ATM 直接取號測試",
       ExpireDate: "2026-12-31",
-      NotifyURL:  "https://test.com",
+      NotifyURL: "https://test.com",
     };
 
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
-    const iv  = Buffer.from(PAYUNI_HASH_IV, 'utf8');
+    const iv = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     
-    // 加密
+    // AES-256-CBC 加密
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encryptInfo = cipher.update(JSON.stringify(encryptParams), 'utf8', 'hex') + cipher.final('hex');
-    const hashInfo = crypto.createHash('sha256').update(PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV).digest('hex').toUpperCase();
 
-    const postData = new URLSearchParams({
-      MerID: PAYUNI_MER_ID,
-      Version: "1.0",
-      EncryptInfo: encryptInfo,
-      HashInfo: hashInfo,
-    }).toString();
+    // SHA256 簽章
+    const hashInfo = crypto.createHash('sha256')
+      .update(PAYUNI_HASH_KEY + encryptInfo + PAYUNI_HASH_IV)
+      .digest('hex').toUpperCase();
 
-    // 2. 使用 https.request 取代 fetch
+    const postData = `MerID=${PAYUNI_MER_ID}&Version=1.0&EncryptInfo=${encryptInfo}&HashInfo=${hashInfo}`;
+
+    // 2. HTTPS 請求設定 (Hostname 必須是純域名)
     const options = {
-      hostname: '://payuni.com.tw',
+      hostname: 'sandbox-api.payuni.com.tw', // ★ 這裡絕對沒有 ://
+      port: 443,
       path: '/api/atm',
       method: 'POST',
       headers: {
@@ -43,12 +48,12 @@ export default async function handler(req, res) {
       }
     };
 
-    const payuniResponse = await new Promise((resolve, reject) => {
+    const result = await new Promise((resolve, reject) => {
       const request = https.request(options, (response) => {
         let data = '';
         response.on('data', (chunk) => { data += chunk; });
         response.on('end', () => {
-          try { resolve(JSON.parse(data)); } catch (e) { reject(new Error("PAYUNi 回傳格式錯誤")); }
+          try { resolve(JSON.parse(data)); } catch (e) { resolve(data); }
         });
       });
       request.on('error', (err) => reject(err));
@@ -56,26 +61,27 @@ export default async function handler(req, res) {
       request.end();
     });
 
-    // 3. 解密結果拿帳號
-    if (payuniResponse.EncryptInfo) {
+    // 3. 解密回傳資料拿帳號
+    if (result.EncryptInfo) {
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-      let dec = decipher.update(payuniResponse.EncryptInfo, 'hex', 'utf8') + decipher.final('utf8');
-      const decryptedData = JSON.parse(dec);
+      let dec = decipher.update(result.EncryptInfo, 'hex', 'utf8') + decipher.final('utf8');
+      const decData = JSON.parse(dec);
 
       return res.status(200).json({
         success: true,
-        status: decryptedData.Status,
-        message: decryptedData.Message,
-        // 這就是你要的直接取號結果
-        payNo: decryptedData.PayNo, 
-        bankCode: decryptedData.BankCode,
-        expireDate: decryptedData.ExpireDate
+        payNo: decData.PayNo,      // 虛擬帳號
+        bankCode: decData.BankCode, // 銀行代碼
+        message: decData.Message
       });
     }
 
-    return res.status(200).json({ success: false, raw: payuniResponse });
+    return res.status(200).json({ success: false, payuniRaw: result });
 
   } catch (err) {
-    return res.status(500).json({ success: false, error: "連線失敗", detail: err.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: "連線失敗", 
+      detail: err.message // 如果還是噴 ENOTFOUND，代表 Vercel 環境中有殘留的錯誤設定或舊代碼
+    });
   }
 }
