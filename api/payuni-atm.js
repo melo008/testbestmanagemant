@@ -1,6 +1,9 @@
 const crypto = require('crypto');
+const https = require('https'); // 引入 https 模組來發送請求
+
 export default async function handler(req, res) {
   const { PAYUNI_MER_ID, PAYUNI_HASH_KEY, PAYUNI_HASH_IV } = process.env;
+
   try {
     const encryptParams = {
       MerID:      PAYUNI_MER_ID,
@@ -8,36 +11,64 @@ export default async function handler(req, res) {
       TradeAmt:   100,
       Timestamp:  Math.floor(Date.now() / 1000),
       BankType:   "004", 
-      ProdDesc:   "訂單測試",
+      ProdDesc:   "直接取號測試",
       ExpireDate: "2026-12-31",
       NotifyURL:  "https://test.com",
     };
+
     const plainText = JSON.stringify(encryptParams);
     const key = Buffer.from(PAYUNI_HASH_KEY, 'utf8');
     const iv = Buffer.from(PAYUNI_HASH_IV, 'utf8');
     
+    // 1. 加密與簽章 (保持你原本的邏輯)
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encryptInfo = cipher.update(plainText, 'utf8', 'hex') + cipher.final('hex');
-    const hashInfo = crypto.createHash('sha256')
-      .update(`HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`)
-      .digest('hex').toUpperCase();
-    // 我直接把「收錢櫃檯」的完整網址寫在 action 裡面了
-    const html = `
-      <html>
-      <head><title>正在前往支付頁面</title></head>
-      <body onload="document.forms.submit()">
-        <form method="POST" action="https://payuni.com.tw">
-          <input type="hidden" name="MerID" value="${PAYUNI_MER_ID}">
-          <input type="hidden" name="Version" value="1.0">
-          <input type="hidden" name="EncryptInfo" value="${encryptInfo}">
-          <input type="hidden" name="HashInfo" value="${hashInfo}">
-        </form>
-        <p>正在前往 PAYUNi 測試付款頁面...</p>
-      </body>
-      </html>
-    `;
-    res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(html);
+    
+    const hashStr = `HashKey=${PAYUNI_HASH_KEY}&EncryptInfo=${encryptInfo}&HashIV=${PAYUNI_HASH_IV}`;
+    const hashInfo = crypto.createHash('sha256').update(hashStr).digest('hex').toUpperCase();
+
+    // 2. 準備由伺服器發送請求，不產生 HTML
+    const postData = `MerID=${PAYUNI_MER_ID}&Version=1.0&EncryptInfo=${encryptInfo}&HashInfo=${hashInfo}`;
+    
+    const options = {
+      hostname: '://payuni.com.tw',
+      path: '/api/atm', // 直接取號專用路徑
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    };
+
+    const result = await new Promise((resolve, reject) => {
+      const request = https.request(options, (response) => {
+        let data = '';
+        response.on('data', (chunk) => { data += chunk; });
+        response.on('end', () => {
+          try { resolve(JSON.parse(data)); } catch (e) { resolve(data); }
+        });
+      });
+      request.on('error', (err) => reject(err));
+      request.write(postData);
+      request.end();
+    });
+
+    // 3. 接收回應後解密，抓出 PayNo (虛擬帳號)
+    if (result.EncryptInfo) {
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let dec = decipher.update(result.EncryptInfo, 'hex', 'utf8') + decipher.final('utf8');
+      const decData = JSON.parse(dec);
+
+      return res.status(200).json({
+        success: true,
+        payNo:    decData.PayNo,      // ★ 這就是你要的帳號！
+        bankCode: decData.BankCode,
+        message:  decData.Message
+      });
+    }
+
+    return res.status(200).json({ success: false, raw: result });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
