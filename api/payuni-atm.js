@@ -1,5 +1,16 @@
 const crypto = require('crypto');
 
+// ...前面的設定...
+
+module.exports = async function handler(req, res) {
+  // ★ 就是放這裡！放在最前面，後面的程式碼就不會被執行到，直接回傳結果。
+  return res.status(200).json({ message: "API 活著" });
+
+  // 以下原本的程式碼會被暫時跳過
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // ...
+
+
 // 修正後的 AES-256-CBC 加密
 function aesEncrypt(plainText) {
   // 注意：PAYUNi 的 Key 和 IV 通常就是字串，直接轉 Buffer
