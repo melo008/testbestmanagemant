@@ -64,25 +64,30 @@ module.exports = async function handler(req, res) {
     console.log(`Room ${room.name} (${room.id}) ${isElec?'電費':'租金'} 付款 ${monthKey} vAccount:${vAccount}`);
 
     if (isElec) {
-      // 電費付款：更新 test_payments 的 elec 欄位
-      const { data: existing } = await db.from('test_payments')
-        .select('*').eq('month_key', monthKey).eq('room_id', room.id).single();
+      // 電費付款：在房間新增「儲電通知 待處理」（跟手動儲電一樣的格式）
+      const { data: roomFull } = await db
+        .from('test_rooms')
+        .select('elec_topups')
+        .eq('id', room.id)
+        .single();
 
-      const updateData = {
-        month_key: monthKey,
-        room_id:   room.id,
-        elec_status:   'paid',
-        elec_paid_at:  PaymentDate || now.toISOString(),
-        elec_trade_no: TradeNo,
-        elec_amount:   Number(TradeAmt),
-        updated_at:    now.toISOString(),
+      const elecTopups = roomFull?.elec_topups || [];
+      const newTopup = {
+        id:     'et' + Date.now(),
+        amount: Number(TradeAmt),
+        note:   `綠界自動到帳（帳號：${vAccount}）`,
+        date:   now.toISOString().split('T')[0],
+        status: 'pending',  // 待處理，等管理人確認度數
+        by:     'ecpay_auto',
+        tradeNo: TradeNo,
       };
-      if (existing) {
-        await db.from('test_payments').update(updateData)
-          .eq('month_key', monthKey).eq('room_id', room.id);
-      } else {
-        await db.from('test_payments').insert({ ...updateData, status: 'unpaid' });
-      }
+      elecTopups.push(newTopup);
+
+      await db.from('test_rooms')
+        .update({ elec_topups: elecTopups })
+        .eq('id', room.id);
+
+      console.log(`✓ 已新增儲電通知 ${room.name} $${TradeAmt}`);
     } else {
       // 租金付款：upsert test_payments
       const { data: existing } = await db.from('test_payments')
