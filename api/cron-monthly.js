@@ -179,7 +179,7 @@ module.exports = async function handler(req, res) {
       await new Promise(r => setTimeout(r, 300)); // 避免太快
 
       // 取得組織的綠界金鑰
-      const roomOrgId = room.org_id || addrOrgMap[room.addr];
+      const roomOrgId = addrOrgMap[room.addr] || room.org_id; // 地址的組織優先
       const org = orgMap[roomOrgId] || {};
       const orgMerchantId = org.ecpay_merchant_id || MERCHANT_ID;
       const orgHashKey    = org.ecpay_hash_key    || HASH_KEY;
