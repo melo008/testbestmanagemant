@@ -184,7 +184,7 @@ module.exports = async function handler(req, res) {
       const orgMerchantId = org.ecpay_merchant_id || MERCHANT_ID;
       const orgHashKey    = org.ecpay_hash_key    || HASH_KEY;
       const orgHashIv     = org.ecpay_hash_iv     || HASH_IV;
-      console.log(`Room ${room.name}: orgId=${roomOrgId}, merchantId=${orgMerchantId}, hasKey=${!!org.ecpay_hash_key}`);
+      console.log(`Room ${room.name}: room.org_id=${room.org_id}, addr=${room.addr}, addrOrgId=${addrOrgMap[room.addr]}, orgId=${roomOrgId}, merchantId=${orgMerchantId}, hasKey=${!!org.ecpay_hash_key}`);
 
       // 沒有組織金鑰就跳過
       if(!orgMerchantId || !orgHashKey || !orgHashIv){
@@ -211,9 +211,12 @@ module.exports = async function handler(req, res) {
           const elecTradeNo = `E${shortId}${YM}${ts}`;
           const elecResult  = await getEcpayAccount({
             merTradeNo: elecTradeNo,
-            amount:     1000, // 儲值電費固定金額，可調整
+            amount:     1000,
             itemName:   `${room.name || room.id}電費儲值`,
             expireDays: 30,
+            merchantId: orgMerchantId,
+            hashKey:    orgHashKey,
+            hashIv:     orgHashIv,
           });
           if (elecResult.success) {
             updateData.elec_acc = elecResult.vAccount;
