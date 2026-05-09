@@ -1210,6 +1210,18 @@ tr:hover td{background:rgba(0,0,0,.015);}
             <div class="ff"><label>IV Key</label><input type="text" id="org-payuni-hash-iv" placeholder="IV Key"></div>
           </div>
         </div>
+        <div class="ff full" style="margin-top:12px;">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:8px;">綠界 串接金鑰（選填）</label>
+          <div class="fg">
+            <div class="ff"><label>綠界 MerchantID</label><input type="text" id="org-ecpay-merchant-id" placeholder="例：3002607"></div>
+            <div class="ff"><label>Hash Key</label><input type="text" id="org-ecpay-hash-key" placeholder="Hash Key"></div>
+            <div class="ff"><label>Hash IV</label><input type="text" id="org-ecpay-hash-iv" placeholder="Hash IV"></div>
+          </div>
+          <div style="margin-top:8px;background:var(--surface2);border-radius:8px;padding:8px 12px;">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">付款通知網址（填入綠界後台）</div>
+            <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text);word-break:break-all;" id="ecpay-webhook-url">https://testbestmanagemant.vercel.app/api/ecpay-webhook</div>
+          </div>
+        </div>
       </div>
       <input type="hidden" id="org-editing-id">
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
@@ -1394,7 +1406,10 @@ async function save(){
       await db.from('test_organizations').upsert(organizations.map(o=>({
         id:o.id, name:o.name, payment_type:o.paymentType||'manual',
         bank_name:o.bankName||null, bank_account:o.bankAccount||null,
-        bank_note:o.bankNote||null, ecpay_merchant_id:o.ecpayMerchantId||null
+        bank_note:o.bankNote||null, ecpay_merchant_id:o.ecpayMerchantId||null,
+        ecpay_hash_key:o.ecpayHashKey||null, ecpay_hash_iv:o.ecpayHashIv||null,
+        payuni_mer_id:o.payuniMerId||null, payuni_hash_key:o.payuniHashKey||null,
+        payuni_hash_iv:o.payuniHashIv||null
       })));
     }
     // Addresses
@@ -1435,6 +1450,9 @@ async function load(){
       id:o.id, name:o.name, paymentType:o.payment_type||'manual',
       bankName:o.bank_name||'', bankAccount:o.bank_account||'',
       bankNote:o.bank_note||'', ecpayMerchantId:o.ecpay_merchant_id||'',
+      ecpayHashKey:o.ecpay_hash_key||'', ecpayHashIv:o.ecpay_hash_iv||'',
+      payuniMerId:o.payuni_mer_id||'', payuniHashKey:o.payuni_hash_key||'',
+      payuniHashIv:o.payuni_hash_iv||'',
       createdAt:o.created_at?new Date(o.created_at).toLocaleDateString('zh-TW'):''
     }));
 
@@ -2608,6 +2626,12 @@ function openOrgModal(id){
     if(pMerId) pMerId.value=o.payuniMerId||'';
     if(pKey) pKey.value=o.payuniHashKey||'';
     if(pIv) pIv.value=o.payuniHashIv||'';
+    const eMerId=document.getElementById('org-ecpay-merchant-id');
+    const eKey=document.getElementById('org-ecpay-hash-key');
+    const eIv=document.getElementById('org-ecpay-hash-iv');
+    if(eMerId) eMerId.value=o.ecpayMerchantId||'';
+    if(eKey) eKey.value=o.ecpayHashKey||'';
+    if(eIv) eIv.value=o.ecpayHashIv||'';
     renderOrgOwnerList(id);
   } else {
     document.getElementById('org-name').value='';
