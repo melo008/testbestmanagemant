@@ -52,12 +52,14 @@ module.exports = async function handler(req, res) {
 
     const room = rooms[0];
     const now  = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-    // 月份格式：YYYY-MM
-    let monthStr = MerchantTradeNo?.slice(7, 13); // 從 MerTradeNo 取 YYYYMM
-    const monthKey = monthStr?.length === 6
-      ? `${monthStr.slice(0,4)}-${monthStr.slice(4,6)}`
-      : `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    // 月份格式：從 MerTradeNo 取 YYYYMM（格式：R/E + shortId(6) + YYYYMM(6) + ts(4)）
+    let monthKey = currentMonthKey; // 預設用當月
+    const monthStr = MerchantTradeNo?.slice(7, 13);
+    if (monthStr?.length === 6 && /^20\d{4}$/.test(monthStr)) {
+      monthKey = `${monthStr.slice(0,4)}-${monthStr.slice(4,6)}`;
+    }
 
     console.log(`Room ${room.name} (${room.id}) ${isElec?'電費':'租金'} 付款 ${monthKey} vAccount:${vAccount}`);
 
@@ -86,14 +88,35 @@ module.exports = async function handler(req, res) {
       const { data: existing } = await db.from('test_payments')
         .select('*').eq('month_key', monthKey).eq('room_id', room.id).single();
 
+      // 讀取房間的應收金額
+      const { data: roomData } = await db
+        .from('test_rooms')
+        .select('rent,elec,elec_type')
+        .eq('id', room.id)
+        .single();
+
+      const expectedAmt = (roomData?.rent || 0) + (roomData?.elec_type === 'monthly' ? (roomData?.elec || 0) : 0);
+      const paidAmt = Number(TradeAmt);
+      const diff = paidAmt - expectedAmt;
+
+      // 判斷付款狀態
+      let payStatus = 'paid';
+      if (expectedAmt > 0 && paidAmt < expectedAmt) payStatus = 'partial'; // 部分付款
+      // 超付還是標記已付款，但記錄實際金額
+
       const updateData = {
-        month_key:  monthKey,
-        room_id:    room.id,
-        status:     'paid',
-        paid_at:    PaymentDate || now.toISOString(),
-        method:     'ecpay_atm',
-        updated_at: now.toISOString(),
+        month_key:       monthKey,
+        room_id:         room.id,
+        status:          payStatus,
+        paid_at:         PaymentDate || now.toISOString(),
+        method:          'ecpay_atm',
+        actual_amount:   paidAmt,        // 實際付款金額
+        diff_amount:     diff,           // 差額（正=超付，負=不足）
+        updated_at:      now.toISOString(),
       };
+
+      console.log(`付款比對：應收 ${expectedAmt}，實付 ${paidAmt}，差額 ${diff}，狀態 ${payStatus}`);
+
       if (existing) {
         await db.from('test_payments').update(updateData)
           .eq('month_key', monthKey).eq('room_id', room.id);
