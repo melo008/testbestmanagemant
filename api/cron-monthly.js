@@ -46,11 +46,37 @@ function getMerchantTradeDate() {
 }
 
 // 取綠界虛擬帳號
-async function getEcpayAccount({ merTradeNo, amount, itemName, expireDays = 30 }) {
+async function getEcpayAccount({ merTradeNo, amount, itemName, expireDays = 30, merchantId, hashKey, hashIv }) {
+  // 優先用傳入的金鑰，沒有才用環境變數
+  const useMerchantId = merchantId || MERCHANT_ID;
+  const useHashKey    = hashKey    || HASH_KEY;
+  const useHashIv     = hashIv     || HASH_IV;
+
+  function encryptLocal(dataObj) {
+    const key = Buffer.from(useHashKey, 'utf8');
+    const iv  = Buffer.from(useHashIv, 'utf8');
+    const cipher = crypto.createCipheriv('aes-128-cbc', key, iv);
+    const urlEncoded = encodeURIComponent(JSON.stringify(dataObj));
+    return Buffer.concat([cipher.update(urlEncoded, 'utf8'), cipher.final()]).toString('base64');
+  }
+
+  function decryptLocal(base64Data) {
+    try {
+      const key = Buffer.from(useHashKey, 'utf8');
+      const iv  = Buffer.from(useHashIv, 'utf8');
+      const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
+      const dec = Buffer.concat([
+        decipher.update(Buffer.from(base64Data, 'base64')),
+        decipher.final()
+      ]).toString('utf8');
+      return JSON.parse(decodeURIComponent(dec));
+    } catch(e) { return null; }
+  }
+
   const dataParams = {
     ATMInfo: { ATMBankCode: '007', ExpireDate: String(expireDays) },
     ChoosePayment: 'ATM',
-    MerchantID: MERCHANT_ID,
+    MerchantID: useMerchantId,
     OrderInfo: {
       ItemName:          itemName.slice(0,400),
       MerchantTradeDate: getMerchantTradeDate(),
@@ -61,9 +87,9 @@ async function getEcpayAccount({ merTradeNo, amount, itemName, expireDays = 30 }
     }
   };
 
-  const encryptedData = aesEncrypt(dataParams);
+  const encryptedData = encryptLocal(dataParams);
   const requestBody = {
-    MerchantID: MERCHANT_ID,
+    MerchantID: useMerchantId,
     RqHeader:   { Timestamp: Math.floor(Date.now()/1000) },
     Data:       encryptedData,
   };
@@ -78,7 +104,7 @@ async function getEcpayAccount({ merTradeNo, amount, itemName, expireDays = 30 }
   const result = JSON.parse(text);
 
   if (result.TransCode === 1 && result.Data) {
-    const dec = aesDecrypt(result.Data);
+    const dec = decryptLocal(result.Data);
     if (dec?.RtnCode === 1) {
       return {
         success:    true,
@@ -108,19 +134,30 @@ module.exports = async function handler(req, res) {
   const results = { success: [], failed: [], skipped: [] };
 
   try {
-    // 讀取所有房間 + 地址收款方式
+    // 讀取所有房間 + 地址 + 組織
     const { data: rooms, error } = await db
       .from('test_rooms')
-      .select('id,name,addr,rent,elec,elec_type,elec_acc');
+      .select('id,name,addr,rent,elec,elec_type,elec_acc,org_id');
 
     if (error) throw error;
 
     // 讀取所有地址的收款方式
     const { data: addresses } = await db
       .from('test_addresses')
-      .select('name,pay_type');
+      .select('name,pay_type,org_id');
     const addrPayMap = {};
-    (addresses||[]).forEach(a => { addrPayMap[a.name] = a.pay_type || 'manual'; });
+    const addrOrgMap = {};
+    (addresses||[]).forEach(a => {
+      addrPayMap[a.name] = a.pay_type || 'manual';
+      addrOrgMap[a.name] = a.org_id;
+    });
+
+    // 讀取所有組織的綠界金鑰
+    const { data: orgs } = await db
+      .from('test_organizations')
+      .select('id,name,ecpay_merchant_id,ecpay_hash_key,ecpay_hash_iv');
+    const orgMap = {};
+    (orgs||[]).forEach(o => { orgMap[o.id] = o; });
 
     console.log(`Cron: ${rooms.length} 間房間`);
 
@@ -141,11 +178,21 @@ module.exports = async function handler(req, res) {
 
       await new Promise(r => setTimeout(r, 300)); // 避免太快
 
+      // 取得組織的綠界金鑰
+      const roomOrgId = room.org_id || addrOrgMap[room.addr];
+      const org = orgMap[roomOrgId] || {};
+      const orgMerchantId = org.ecpay_merchant_id || MERCHANT_ID;
+      const orgHashKey    = org.ecpay_hash_key    || HASH_KEY;
+      const orgHashIv     = org.ecpay_hash_iv     || HASH_IV;
+
       const rentResult = await getEcpayAccount({
-        merTradeNo: rentTradeNo,
-        amount:     rentAmount || 100, // 最少 100 元
-        itemName:   `${room.name || room.id}月租`,
-        expireDays: 30,
+        merTradeNo:  rentTradeNo,
+        amount:      rentAmount || 100,
+        itemName:    `${room.name || room.id}月租`,
+        expireDays:  30,
+        merchantId:  orgMerchantId,
+        hashKey:     orgHashKey,
+        hashIv:      orgHashIv,
       });
 
       if (rentResult.success) {
