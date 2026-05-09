@@ -3200,11 +3200,13 @@ function saveAddrMgr(){
   save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
 }
 
-function deleteAddr(){
+async function deleteAddr(){
   if(!editingAddrName){ return; }
   const roomCount = rooms.filter(r=>r.addr===editingAddrName).length;
   if(roomCount>0){ toast(`此地址還有 ${roomCount} 間房間，請先將房間移至其他地址`); return; }
   if(!confirm(`確定刪除地址「${editingAddrName}」？`)) return;
+  // 從 Supabase 刪除
+  await db.from('test_addresses').delete().eq('name', editingAddrName);
   addresses = addresses.filter(a=>a.name!==editingAddrName);
   save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址已刪除');
 }
