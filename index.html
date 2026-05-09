@@ -1035,6 +1035,36 @@ tr:hover td{background:rgba(0,0,0,.015);}
         </div>
       </div>
     </div>
+    <!-- 收款方式 -->
+    <div id="addr-pay-section" style="padding:12px 1.25rem;border-top:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;">收款方式</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+        <div id="addr-pay-manual" onclick="setAddrPay('manual')" style="border:2px solid var(--text);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
+          <div style="font-size:12px;font-weight:600;">手動對帳</div>
+        </div>
+        <div id="addr-pay-bank" onclick="setAddrPay('bank')" style="border:1px solid var(--border);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
+          <div style="font-size:12px;font-weight:600;">銀行轉帳</div>
+        </div>
+        <div id="addr-pay-ecpay" onclick="setAddrPay('ecpay')" style="border:1px solid var(--border);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
+          <div style="font-size:12px;font-weight:600;">綠界</div>
+        </div>
+        <div id="addr-pay-payuni" onclick="setAddrPay('payuni')" style="border:1px solid var(--border);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
+          <div style="font-size:12px;font-weight:600;">PAYUNi</div>
+        </div>
+      </div>
+      <div id="addr-bank-fields" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label style="font-size:12px;color:var(--text2);">銀行名稱</label><input type="text" id="addr-bank-name" placeholder="例：玉山銀行" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"></div>
+          <div><label style="font-size:12px;color:var(--text2);">銀行帳號</label><input type="text" id="addr-bank-acc" placeholder="帳號" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"></div>
+        </div>
+      </div>
+      <div id="addr-ecpay-fields" style="display:none;">
+        <div style="font-size:12px;color:var(--text3);background:var(--blue-bg);padding:8px 10px;border-radius:6px;">使用組織設定的綠界 MerchantID 自動取號</div>
+      </div>
+      <div id="addr-payuni-fields" style="display:none;">
+        <div style="font-size:12px;color:var(--text3);background:var(--blue-bg);padding:8px 10px;border-radius:6px;">使用組織設定的 PAYUNi 帳號自動取號</div>
+      </div>
+    </div>
     <div class="modal-ft">
       <button class="btn" onclick="closeModal('addr-mgr-modal')">取消</button>
       <button class="btn btn-primary" onclick="saveAddrMgr()">儲存</button>
@@ -1172,29 +1202,13 @@ tr:hover td{background:rgba(0,0,0,.015);}
     <div style="padding:1rem 1.25rem;">
       <div class="fg">
         <div class="ff full"><label>組織名稱 *</label><input type="text" id="org-name" placeholder="例：Z租賃公司"></div>
-        <div class="ff full">
-          <label>收款方式</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:2px;">
-            <div id="pay-opt-manual" onclick="setOrgPay('manual')" style="border:2px solid var(--text);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:center;">
-              <div style="font-size:12px;font-weight:600;">手動對帳</div>
-            </div>
-            <div id="pay-opt-bank" onclick="setOrgPay('bank')" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:center;">
-              <div style="font-size:12px;font-weight:600;">銀行帳號</div>
-            </div>
-            <div id="pay-opt-ecpay" onclick="setOrgPay('ecpay')" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:center;">
-              <div style="font-size:12px;font-weight:600;">綠界</div>
-            </div>
-          </div>
-        </div>
-        <div class="ff full" id="org-bank-fields" style="display:none;">
+        <div class="ff full" id="org-payuni-fields">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:8px;">PAYUNi 串接金鑰（選填）</label>
           <div class="fg">
-            <div class="ff"><label>銀行名稱</label><input type="text" id="org-bank-name" placeholder="例：玉山銀行"></div>
-            <div class="ff"><label>銀行帳號</label><input type="text" id="org-bank-acc" placeholder="帳號"></div>
-            <div class="ff full"><label>備註（選填）</label><input type="text" id="org-bank-note" placeholder="例：戶名：Z公司"></div>
+            <div class="ff"><label>PAYUNi 商店代號（MerID）</label><input type="text" id="org-payuni-mer-id" placeholder="例：U003275680"></div>
+            <div class="ff"><label>Hash Key</label><input type="text" id="org-payuni-hash-key" placeholder="Hash Key"></div>
+            <div class="ff"><label>IV Key</label><input type="text" id="org-payuni-hash-iv" placeholder="IV Key"></div>
           </div>
-        </div>
-        <div class="ff full" id="org-ecpay-fields" style="display:none;">
-          <label>綠界 MerchantID</label><input type="text" id="org-ecpay-id" placeholder="填入後可自動取號">
         </div>
       </div>
       <input type="hidden" id="org-editing-id">
@@ -1389,7 +1403,10 @@ async function save(){
         name:a.name, elec_type:a.elecType||'monthly',
         elec_acc:a.elecAcc||null, elec_price:a.elecPrice||0,
         managers:a.managers||[],
-        org_id:a.org_id||getCurrentOrgId()||null
+        org_id:a.org_id||getCurrentOrgId()||null,
+        pay_type:a.payType||'manual',
+        bank_name:a.bankName||null,
+        bank_account:a.bankAccount||null
       })),{onConflict:'name'});
     }
     // Archive
@@ -2556,12 +2573,14 @@ let currentPayType = 'manual';
 
 function setOrgPay(type){
   currentPayType = type;
-  ['manual','bank','ecpay'].forEach(t=>{
+  ['manual','bank','ecpay','payuni'].forEach(t=>{
     const el=document.getElementById('pay-opt-'+t);
     if(el) el.style.border=t===type?'2px solid var(--text)':'1px solid var(--border)';
   });
   document.getElementById('org-bank-fields').style.display=type==='bank'?'':'none';
   document.getElementById('org-ecpay-fields').style.display=type==='ecpay'?'':'none';
+  const payuniF=document.getElementById('org-payuni-fields');
+  if(payuniF) payuniF.style.display=type==='payuni'?'':'none';
 }
 
 function openOrgModal(id){
@@ -2581,16 +2600,16 @@ function openOrgModal(id){
     const o=organizations.find(x=>x.id===id);
     if(!o) return;
     document.getElementById('org-name').value=o.name;
-    setOrgPay(o.paymentType||'manual');
-    document.getElementById('org-bank-name').value=o.bankName||'';
-    document.getElementById('org-bank-acc').value=o.bankAccount||'';
-    document.getElementById('org-bank-note').value=o.bankNote||'';
-    document.getElementById('org-ecpay-id').value=o.ecpayMerchantId||'';
+    const pMerId=document.getElementById('org-payuni-mer-id');
+    const pKey=document.getElementById('org-payuni-hash-key');
+    const pIv=document.getElementById('org-payuni-hash-iv');
+    if(pMerId) pMerId.value=o.payuniMerId||'';
+    if(pKey) pKey.value=o.payuniHashKey||'';
+    if(pIv) pIv.value=o.payuniHashIv||'';
     renderOrgOwnerList(id);
   } else {
     document.getElementById('org-name').value='';
-    setOrgPay('manual');
-    ['org-bank-name','org-bank-acc','org-bank-note','org-ecpay-id'].forEach(i=>document.getElementById(i).value='');
+    ['org-payuni-mer-id','org-payuni-hash-key','org-payuni-hash-iv'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
     document.getElementById('org-owner-list').innerHTML='';
   }
   document.getElementById('org-modal').style.display='flex';
@@ -2652,21 +2671,20 @@ async function removeOrgOwner(mgrId){
 function saveOrg(){
   const name=document.getElementById('org-name').value.trim();
   if(!name){ toast('請填寫組織名稱'); return; }
+  const payuniMerId=(document.getElementById('org-payuni-mer-id')?.value||'').trim();
+  const payuniHashKey=(document.getElementById('org-payuni-hash-key')?.value||'').trim();
+  const payuniHashIv=(document.getElementById('org-payuni-hash-iv')?.value||'').trim();
   if(editingOrgId){
     const o=organizations.find(x=>x.id===editingOrgId);
     if(!o) return;
-    o.name=name; o.paymentType=currentPayType;
-    o.bankName=document.getElementById('org-bank-name').value.trim();
-    o.bankAccount=document.getElementById('org-bank-acc').value.trim();
-    o.bankNote=document.getElementById('org-bank-note').value.trim();
-    o.ecpayMerchantId=document.getElementById('org-ecpay-id').value.trim();
+    o.name=name;
+    o.payuniMerId=payuniMerId;
+    o.payuniHashKey=payuniHashKey;
+    o.payuniHashIv=payuniHashIv;
   } else {
     organizations.push({
-      id:'org'+Date.now(), name, paymentType:currentPayType,
-      bankName:document.getElementById('org-bank-name').value.trim(),
-      bankAccount:document.getElementById('org-bank-acc').value.trim(),
-      bankNote:document.getElementById('org-bank-note').value.trim(),
-      ecpayMerchantId:document.getElementById('org-ecpay-id').value.trim(),
+      id:'org'+Date.now(), name,
+      payuniMerId, payuniHashKey, payuniHashIv,
       createdAt:new Date().toLocaleDateString('zh-TW')
     });
   }
@@ -2805,6 +2823,22 @@ function hasPerm(perm){
 }
 
 // ── 獨立權限設定 Modal ──
+let currentAddrPayType = 'inherit';
+
+function setAddrPay(type){
+  currentAddrPayType = type;
+  ['manual','bank','ecpay','payuni'].forEach(t=>{
+    const el=document.getElementById('addr-pay-'+t);
+    if(el) el.style.border=t===type?'2px solid var(--text)':'1px solid var(--border)';
+  });
+  const bankF=document.getElementById('addr-bank-fields');
+  const ecpayF=document.getElementById('addr-ecpay-fields');
+  const payuniF=document.getElementById('addr-payuni-fields');
+  if(bankF) bankF.style.display=type==='bank'?'':'none';
+  if(ecpayF) ecpayF.style.display=type==='ecpay'?'':'none';
+  if(payuniF) payuniF.style.display=type==='payuni'?'':'none';
+}
+
 let editingPermMgrId = null;
 const PERM_LIST = [
   {key:'canAdjust', label:'改帳功能'},
@@ -3086,6 +3120,15 @@ function openAddrMgrModal(name){
   if(addrSaveBtn) addrSaveBtn.style.display=canEdit?'':'none';
   const addrCancelBtn=document.querySelector('#addr-mgr-modal .modal-ft .btn:first-child');
   if(addrCancelBtn) addrCancelBtn.textContent=canEdit?'取消':'關閉';
+  // 載入地址收款方式
+  setAddrPay(a.payType||'manual');
+  const addrBankName=document.getElementById('addr-bank-name');
+  const addrBankAcc=document.getElementById('addr-bank-acc');
+  if(addrBankName) addrBankName.value=a.bankName||'';
+  if(addrBankAcc) addrBankAcc.value=a.bankAccount||'';
+  // 顯示/隱藏收款方式區塊（管理人唯讀時隱藏）
+  const addrPaySec=document.getElementById('addr-pay-section');
+  if(addrPaySec) addrPaySec.style.display=canEdit?'':'none';
   document.getElementById('addr-mgr-modal').style.display='flex';
 }
 
@@ -3146,6 +3189,10 @@ function saveAddrMgr(){
   const orgSel=document.getElementById('addr-edit-org');
   if(orgSel&&!orgSel.disabled) a.org_id=orgSel.value||null;
   else if(isOrgOwner()&&!a.org_id) a.org_id=currentUser.org_id||null; // org_owner 自動帶入
+  // 儲存收款方式
+  a.payType = currentAddrPayType;
+  a.bankName = (document.getElementById('addr-bank-name')?.value||'').trim();
+  a.bankAccount = (document.getElementById('addr-bank-acc')?.value||'').trim();
   save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
 }
 
