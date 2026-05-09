@@ -544,7 +544,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
       <div class="addr-bar" id="hist-addr-bar" style="margin-bottom:1rem;"></div>
       <div class="tbl-scroll-hint">← 左右滑動查看更多欄位 →</div>
       <div class="tbl-wrap sticky-first">
-        <table><thead><tr><th>房間 / 租客</th><th>地址</th><th>虛擬帳號</th><th>應收金額</th><th>狀態</th><th>付款時間</th><th>操作</th></tr></thead>
+        <table><thead><tr><th>房間 / 租客</th><th>地址</th><th>虛擬帳號</th><th>應收金額</th><th>實收金額</th><th>狀態</th><th>付款時間</th><th>操作</th></tr></thead>
         <tbody id="hist-tbody"></tbody></table>
       </div>
     </div>
@@ -2221,6 +2221,7 @@ function renderHistory(){
       <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
       <td class="mono" style="font-size:11px">${r.acc||'—'}</td>
       <td class="mono">${isVacant?'—':getActualRentLabel(r,pay)}</td>
+      <td class="mono" style="font-size:12px;">${pay.actualAmount!=null?'$'+Number(pay.actualAmount).toLocaleString():'—'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:4px;">
           <span class="badge ${bc}">${bt}</span>
