@@ -1616,6 +1616,8 @@ function doLogin(){
   // 設定當前組織
   currentOrg = found.org_id ? organizations.find(o=>o.id===found.org_id)||null : null;
   document.getElementById('auth-err').style.display='none';
+  // 記住登入狀態（F5 不登出）
+  try{ localStorage.setItem('rg_session', JSON.stringify({uid:found.id, username:found.username})); }catch(e){}
   // 記錄登入 log（含 IP）
   fetch('https://api.ipify.org?format=json')
     .then(r=>r.json())
@@ -1675,6 +1677,7 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{ if(e.key==
 
 function doLogout(){
   currentUser=null;
+  try{ localStorage.removeItem('rg_session'); }catch(e){}
   document.getElementById('app-screen').style.display='none';
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('login-user').value='';
@@ -4430,6 +4433,37 @@ function copyBankWebhook(){
 (async()=>{
   await load();
   await loadMgrExpenses();
+  // 自動登入（F5 不登出）
+  try{
+    const sess = JSON.parse(localStorage.getItem('rg_session')||'null');
+    if(sess?.uid){
+      const found = getUsers().find(x=>x.id===sess.uid&&x.username===sess.username);
+      if(found && !found.suspended){
+        // 靜默自動登入，不記 log
+        currentUser = found;
+        currentOrg = found.org_id ? organizations.find(o=>o.id===found.org_id)||null : null;
+        document.getElementById('auth-screen').style.display='none';
+        document.getElementById('app-screen').style.display='flex';
+        const avatarColors={owner:{bg:'#EDE9FE',fg:'#4C1D95'},superadmin:{bg:'#EDE9FE',fg:'#4C1D95'},coowner:{bg:'#FEF3C7',fg:'#92400E'},org_owner:{bg:'#E1F5EE',fg:'#0F6E56'},manager:{bg:'#E6F1FB',fg:'#185FA5'}};
+        const roleLabels={owner:'Admin（最高權限）',superadmin:'Admin（最高權限）',coowner:'副管理員',org_owner:'組織負責人',manager:'管理人'};
+        const ac=avatarColors[found.role]||avatarColors.manager;
+        document.getElementById('nav-name').textContent=found.name;
+        document.getElementById('nav-role').textContent=roleLabels[found.role]||'管理人';
+        document.getElementById('nav-avatar').textContent=found.name[0];
+        document.getElementById('nav-avatar').style.background=ac.bg;
+        document.getElementById('nav-avatar').style.color=ac.fg;
+        const usernameEl=document.getElementById('nav-username'); if(usernameEl) usernameEl.textContent=found.username;
+        const orgEl=document.getElementById('nav-org');
+        if(orgEl){ const showOrg=found.role==='org_owner'||found.role==='manager'; const orgName=showOrg&&found.org_id?(organizations.find(o=>o.id===found.org_id)?.name||''):''; orgEl.textContent=orgName; orgEl.style.display=orgName?'':'none'; }
+        document.getElementById('nav-managers').style.display=isOwner()?'':'none';
+        document.getElementById('nav-addr-mgr').style.display=isOwner()?'':'none';
+        document.getElementById('nav-archive').style.display=isAdmin()?'':'none';
+        const orgNavBtn=document.getElementById('nav-orgs'); if(orgNavBtn) orgNavBtn.style.display=(found.role==='owner'||found.role==='superadmin')?'':'none';
+        const logNavBtn=document.getElementById('nav-auditlog'); if(logNavBtn) logNavBtn.style.display=(found.role==='owner'||found.role==='superadmin')?'':'none';
+        loadCfg();
+      }
+    }
+  }catch(e){}
   renderAll();
   try{ const savedGwMode=localStorage.getItem('rg_gw_mode')||'ecpay'; if(savedGwMode==='bank') switchGw('bank'); }catch(e){}
   // Supabase Realtime 訂閱付款狀態更新
