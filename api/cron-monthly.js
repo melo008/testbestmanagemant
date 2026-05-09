@@ -108,19 +108,35 @@ module.exports = async function handler(req, res) {
   const results = { success: [], failed: [], skipped: [] };
 
   try {
-    // 讀取所有房間
+    // 讀取所有房間 + 地址收款方式
     const { data: rooms, error } = await db
       .from('test_rooms')
       .select('id,name,addr,rent,elec,elec_type,elec_acc');
 
     if (error) throw error;
+
+    // 讀取所有地址的收款方式
+    const { data: addresses } = await db
+      .from('test_addresses')
+      .select('name,pay_type');
+    const addrPayMap = {};
+    (addresses||[]).forEach(a => { addrPayMap[a.name] = a.pay_type || 'manual'; });
+
     console.log(`Cron: ${rooms.length} 間房間`);
 
     for (const room of rooms) {
       const shortId = room.id.slice(-6).replace(/[^a-zA-Z0-9]/g,'');
 
+      // 只有地址收款方式為綠界才取號
+      const payType = addrPayMap[room.addr] || 'manual';
+      if (payType !== 'ecpay') {
+        results.skipped.push({ roomId: room.id, name: room.name, reason: `pay_type=${payType}` });
+        continue;
+      }
+
       // ── 取租金虛擬帳號 ──
-      const rentTradeNo = `R${shortId}${YM}`;
+      const ts = String(Date.now()).slice(-4); // 加後4碼時間戳避免重複
+      const rentTradeNo = `R${shortId}${YM}${ts}`;
       const rentAmount  = (room.rent || 0) + (room.elec_type === 'monthly' ? (room.elec || 0) : 0);
 
       await new Promise(r => setTimeout(r, 300)); // 避免太快
@@ -138,7 +154,7 @@ module.exports = async function handler(req, res) {
         // ── 儲值電費：再取一個虛擬帳號 ──
         if (room.elec_type === 'prepay') {
           await new Promise(r => setTimeout(r, 300));
-          const elecTradeNo = `E${shortId}${YM}`;
+          const elecTradeNo = `E${shortId}${YM}${ts}`;
           const elecResult  = await getEcpayAccount({
             merTradeNo: elecTradeNo,
             amount:     1000, // 儲值電費固定金額，可調整
