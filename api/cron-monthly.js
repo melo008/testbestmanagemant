@@ -6,9 +6,9 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 // ── 綠界設定 ──
-const MERCHANT_ID = process.env.ECPAY_MERCHANT_ID || '2000132';
-const HASH_KEY    = process.env.ECPAY_HASH_KEY    || '5294y06CeYjuYpS5';
-const HASH_IV     = process.env.ECPAY_HASH_IV     || 'v77hoKGq4kWxRRI9';
+const MERCHANT_ID = process.env.ECPAY_MERCHANT_ID || null;
+const HASH_KEY    = process.env.ECPAY_HASH_KEY    || null;
+const HASH_IV     = process.env.ECPAY_HASH_IV     || null;
 const IS_SANDBOX  = process.env.ECPAY_SANDBOX !== 'false';
 const ECPAY_URL   = IS_SANDBOX
   ? 'https://ecpayment-stage.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode'
@@ -185,6 +185,12 @@ module.exports = async function handler(req, res) {
       const orgHashKey    = org.ecpay_hash_key    || HASH_KEY;
       const orgHashIv     = org.ecpay_hash_iv     || HASH_IV;
       console.log(`Room ${room.name}: orgId=${roomOrgId}, merchantId=${orgMerchantId}, hasKey=${!!org.ecpay_hash_key}`);
+
+      // 沒有組織金鑰就跳過
+      if(!orgMerchantId || !orgHashKey || !orgHashIv){
+        results.skipped.push({ roomId: room.id, name: room.name, reason: 'no_ecpay_credentials' });
+        continue;
+      }
 
       const rentResult = await getEcpayAccount({
         merTradeNo:  rentTradeNo,
