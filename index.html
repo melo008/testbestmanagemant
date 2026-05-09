@@ -4432,7 +4432,66 @@ function copyBankWebhook(){
   await loadMgrExpenses();
   renderAll();
   try{ const savedGwMode=localStorage.getItem('rg_gw_mode')||'ecpay'; if(savedGwMode==='bank') switchGw('bank'); }catch(e){}
+  // Supabase Realtime 訂閱付款狀態更新
+  startRealtimeSync();
 })();
+
+function startRealtimeSync(){
+  if(!currentUser) return;
+  const tbl = 'test_payments';
+  db.channel('payments-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: tbl }, async (payload) => {
+      console.log('Realtime payment update:', payload);
+      // 重新讀取付款資料並渲染
+      const {data:pData} = await db.from(tbl).select('*');
+      if(pData){
+        payments={};
+        pData.forEach(p=>{
+          if(!payments[p.month_key]) payments[p.month_key]={};
+          payments[p.month_key][p.room_id]={
+            status:p.status||'unpaid',
+            paidAt:p.paid_at||null,
+            method:p.method||null,
+            adjustedAmount:p.adjusted_amount??null,
+            adjHistory:p.adj_history||[],
+            elecTopupLog:p.elec_topup_log||[],
+            elecStatus:p.elec_status||'unpaid',
+            elecPaidAt:p.elec_paid_at||null,
+            elecAmount:p.elec_amount||null,
+            actualAmount:p.actual_amount||null,
+            diffAmount:p.diff_amount||null,
+          };
+        });
+      }
+      // 重新讀取房間（電費儲電通知）
+      const {data:rData} = await db.from('test_rooms').select('id,elec_topups,acc,elec_acc');
+      if(rData) rData.forEach(r=>{
+        const room = rooms.find(x=>x.id===r.id);
+        if(room){
+          room.elecTopups = r.elec_topups||[];
+          room.acc = r.acc||'';
+          room.elecAcc = r.elec_acc||'';
+        }
+      });
+      renderAll();
+      toast('💰 收款狀態已更新');
+    })
+    .subscribe();
+
+  // 同時訂閱房間更新（虛擬帳號）
+  db.channel('rooms-changes')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'test_rooms' }, async (payload) => {
+      const r = payload.new;
+      const room = rooms.find(x=>x.id===r.id);
+      if(room && (room.acc !== r.acc || room.elecAcc !== r.elec_acc)){
+        room.acc = r.acc||'';
+        room.elecAcc = r.elec_acc||'';
+        room.elecTopups = r.elec_topups||[];
+        renderRooms();
+      }
+    })
+    .subscribe();
+}
 
 function checkExpiryNotices(){
   const today=new Date(); today.setHours(0,0,0,0);
