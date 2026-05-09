@@ -941,7 +941,6 @@ tr:hover td{background:rgba(0,0,0,.015);}
         </div>
       </div>
       <div class="ff" id="elec-field-monthly"><label>本月電費（元）</label><input type="number" id="f-elec" placeholder="0" oninput="updateExpected()"></div>
-      <div class="ff full" id="elec-field-prepay" style="display:none;"><label>電費虛擬帳號（第二組，專收電費）</label><input type="text" id="f-elec-acc" placeholder="例：809001xxxxxxxxx"></div>
       <div class="ff" id="elec-field-price" style="display:none;"><label>每度電費單價（元）</label><input type="number" id="f-elec-price" placeholder="例：4.5" step="0.1" oninput="updateExpected()"></div>
       <input type="hidden" id="f-elec-balance" value="0">
       <div class="ff full" style="background:var(--surface2);border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;">
@@ -949,6 +948,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;" id="f-expected">$0</span>
       </div>
       <div class="ff full" id="f-acc-field" style="display:none;"><label>虛擬帳號</label><input type="text" id="f-acc" placeholder="例：809001xxxxxxxxx" style="font-family:'DM Mono',monospace;"></div>
+      <div class="ff full" id="elec-field-prepay" style="display:none;"><label>電費虛擬帳號（第二組，專收電費）</label><input type="text" id="f-elec-acc" placeholder="例：809001xxxxxxxxx"></div>
       <div class="ff"><label>租客匯款帳號後五碼</label><input type="text" id="f-bank-last5" placeholder="例：12345" maxlength="5"></div>
       <div class="ff full"><label>備註</label><textarea id="f-note" placeholder="其他備註…" style="min-height:50px;"></textarea></div>
     </div>
