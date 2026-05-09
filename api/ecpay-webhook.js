@@ -1,7 +1,5 @@
 // api/ecpay-webhook.js
-// 綠界付款完成通知（幕後 Server POST）
-// 租客匯款後綠界打這個網址，自動標記已付款
-
+// 綠界付款完成通知
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPA_URL = process.env.SUPABASE_URL || 'https://fuvfvfmprxnhwxkexmtr.supabase.co';
@@ -12,25 +10,13 @@ module.exports = async function handler(req, res) {
 
   let body = req.body || {};
   if (typeof body === 'string') {
-    const params = new URLSearchParams(body);
-    body = Object.fromEntries(params);
+    body = Object.fromEntries(new URLSearchParams(body));
   }
 
   console.log('ECPay Webhook received:', JSON.stringify(body));
 
-  // 綠界 Webhook 參數
-  const {
-    MerchantID,
-    MerchantTradeNo,
-    TradeNo,
-    PaymentType,
-    TradeAmt,
-    PaymentDate,
-    RtnCode,
-    RtnMsg,
-    BankCode,
-    vAccount,
-  } = body;
+  const { MerchantID, MerchantTradeNo, TradeNo, PaymentType,
+          TradeAmt, PaymentDate, RtnCode, BankCode, vAccount } = body;
 
   // RtnCode = 1 代表付款成功
   if (String(RtnCode) !== '1') {
@@ -41,52 +27,82 @@ module.exports = async function handler(req, res) {
   const db = createClient(SUPA_URL, SUPA_KEY);
 
   try {
-    // MerTradeNo 格式：R{shortId}{YYYYMM} 或 E{shortId}{YYYYMM}
-    const isElec    = MerchantTradeNo?.startsWith('E');
-    const shortId   = MerchantTradeNo?.slice(1, 7);
-    const monthStr  = MerchantTradeNo?.slice(7); // YYYYMM
+    const isElec  = MerchantTradeNo?.startsWith('E');
+    const field   = isElec ? 'elec_acc' : 'acc';
 
-    // 找對應房間（透過 acc 或 elec_acc 比對）
-    const field = isElec ? 'elec_acc' : 'acc';
-    const { data: rooms } = await db
+    // 用虛擬帳號找對應的房間
+    console.log(`Searching ${field} = ${vAccount}`);
+    const { data: rooms, error: roomErr } = await db
       .from('test_rooms')
-      .select('id,name,payments')
+      .select('id,name,addr')
       .eq(field, vAccount);
+
+    console.log('Query result:', JSON.stringify(rooms), 'Error:', roomErr?.message);
 
     if (!rooms?.length) {
       console.log('Room not found for vAccount:', vAccount);
+      // 嘗試用 ilike 搜尋（去除空格）
+      const { data: rooms2 } = await db
+        .from('test_rooms')
+        .select('id,name,acc,elec_acc')
+        .ilike(field, `%${vAccount.trim()}%`);
+      console.log('Fuzzy search result:', JSON.stringify(rooms2));
       return res.status(200).send('1|OK');
     }
 
-    const room    = rooms[0];
-    const now     = new Date();
-    const monthKey = monthStr
+    const room = rooms[0];
+    const now  = new Date();
+
+    // 月份格式：YYYY-MM
+    let monthStr = MerchantTradeNo?.slice(7, 13); // 從 MerTradeNo 取 YYYYMM
+    const monthKey = monthStr?.length === 6
       ? `${monthStr.slice(0,4)}-${monthStr.slice(4,6)}`
       : `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-    // 更新付款紀錄
-    const payments = room.payments || {};
-    if (!payments[monthKey]) payments[monthKey] = {};
+    console.log(`Room ${room.name} (${room.id}) ${isElec?'電費':'租金'} 付款 ${monthKey} vAccount:${vAccount}`);
 
     if (isElec) {
-      payments[monthKey].elecStatus  = 'paid';
-      payments[monthKey].elecPaidAt  = PaymentDate || new Date().toISOString();
-      payments[monthKey].elecAmt     = TradeAmt;
-      payments[monthKey].elecTradeNo = TradeNo;
+      // 電費付款：更新 test_payments 的 elec 欄位
+      const { data: existing } = await db.from('test_payments')
+        .select('*').eq('month_key', monthKey).eq('room_id', room.id).single();
+
+      const updateData = {
+        month_key: monthKey,
+        room_id:   room.id,
+        elec_status:   'paid',
+        elec_paid_at:  PaymentDate || now.toISOString(),
+        elec_trade_no: TradeNo,
+        elec_amount:   Number(TradeAmt),
+        updated_at:    now.toISOString(),
+      };
+      if (existing) {
+        await db.from('test_payments').update(updateData)
+          .eq('month_key', monthKey).eq('room_id', room.id);
+      } else {
+        await db.from('test_payments').insert({ ...updateData, status: 'unpaid' });
+      }
     } else {
-      payments[monthKey].status   = 'paid';
-      payments[monthKey].paidAt   = PaymentDate || new Date().toISOString();
-      payments[monthKey].method   = 'ecpay_atm';
-      payments[monthKey].tradeNo  = TradeNo;
-      payments[monthKey].bankCode = BankCode;
-      payments[monthKey].vAccount = vAccount;
+      // 租金付款：upsert test_payments
+      const { data: existing } = await db.from('test_payments')
+        .select('*').eq('month_key', monthKey).eq('room_id', room.id).single();
+
+      const updateData = {
+        month_key:  monthKey,
+        room_id:    room.id,
+        status:     'paid',
+        paid_at:    PaymentDate || now.toISOString(),
+        method:     'ecpay_atm',
+        updated_at: now.toISOString(),
+      };
+      if (existing) {
+        await db.from('test_payments').update(updateData)
+          .eq('month_key', monthKey).eq('room_id', room.id);
+      } else {
+        await db.from('test_payments').insert(updateData);
+      }
     }
 
-    await db.from('test_rooms')
-      .update({ payments })
-      .eq('id', room.id);
-
-    // 寫入 Log
+    // 寫入操作 Log
     await db.from('test_audit_log').insert({
       user_id:   'ecpay_webhook',
       user_name: '綠界自動對帳',
@@ -95,12 +111,11 @@ module.exports = async function handler(req, res) {
       detail:    `${monthKey} 帳號：${vAccount} 金額：$${TradeAmt}`,
     });
 
-    console.log(`Room ${room.id} (${room.name}) ${isElec ? '電費' : '租金'} 已付款 ${monthKey}`);
+    console.log(`✓ 已更新 ${room.name} ${monthKey} ${isElec?'電費':'租金'}付款`);
 
   } catch (err) {
     console.error('Webhook error:', err);
   }
 
-  // 必須回傳 1|OK 給綠界
   return res.status(200).send('1|OK');
 };
