@@ -1488,7 +1488,12 @@ async function load(){
           method:p.method||null,
           adjustedAmount:p.adjusted_amount??null,
           adjHistory:p.adj_history||[],
-          elecTopupLog:p.elec_topup_log||[]
+          elecTopupLog:p.elec_topup_log||[],
+          elecStatus:p.elec_status||'unpaid',
+          elecPaidAt:p.elec_paid_at||null,
+          elecAmount:p.elec_amount||null,
+          actualAmount:p.actual_amount||null,
+          diffAmount:p.diff_amount||null,
         };
       });
     }
@@ -2231,6 +2236,19 @@ function renderHistory(){
       </td>
     </tr>`;
     // 儲值電費獨立行（每筆已處理的儲電）
+    // 綠界自動電費付款行
+    const elecAutoRow=(isPrepay&&!isVacant&&pay.elecStatus==='paid')?`
+      <tr style="background:rgba(245,158,11,.06);">
+        <td style="font-size:12px;color:var(--amber-dk);padding-left:16px;">⚡ ${r.name} 電費</td>
+        <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
+        <td class="mono" style="font-size:11px">${r.elecAcc||'—'}</td>
+        <td class="mono" style="color:var(--amber-dk);">${pay.elecAmount?'$'+Number(pay.elecAmount).toLocaleString():'—'}</td>
+        <td><span class="badge" style="background:#FEF3C7;color:#92400E;font-size:11px;">已付款</span></td>
+        <td style="font-size:11px;color:var(--text3);">
+          ${pay.elecPaidAt?`<span>${formatDT(pay.elecPaidAt)}</span><span style="display:block;font-size:10px;color:var(--blue-dk);">銀行到帳</span>`:'—'}
+        </td>
+        <td></td>
+      </tr>` : '';
     const elecRows=(isPrepay&&!isVacant)?(pay.elecTopupLog||[]).map(t=>`
       <tr style="background:rgba(245,158,11,.04);">
         <td style="font-size:12px;color:var(--amber-dk);padding-left:16px;">⚡ ${r.name} 儲電</td>
@@ -2245,7 +2263,7 @@ function renderHistory(){
         </td>
         <td></td>
       </tr>`).join(''):'';
-    return rentRow+elecRows;
+    return rentRow+elecAutoRow+elecRows;
   }).join('');
 }
 
