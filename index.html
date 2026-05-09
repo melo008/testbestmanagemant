@@ -1494,7 +1494,9 @@ async function load(){
     if(aData) addresses=aData.map(a=>({
       name:a.name, elecType:a.elec_type||'monthly',
       elecAcc:a.elec_acc||'', elecPrice:a.elec_price||0,
-      managers:a.managers||[], org_id:a.org_id||null
+      managers:a.managers||[], org_id:a.org_id||null,
+      payType:a.pay_type||'manual',
+      bankName:a.bank_name||'', bankAccount:a.bank_account||''
     }));
     // Archive
     const {data:arcData}=await db.from('test_tenant_archive').select('*');
@@ -2970,10 +2972,19 @@ function openRoomModal(id){
     const bl5=document.getElementById('f-bank-last5');if(bl5)bl5.value=r.bankLast5||'';
     document.getElementById('f-note').value=r.note||'';
     populateAddrSelect(r.addr||'未分類');
-    // 顯示虛擬帳號欄位（只有綠界才顯示）
+    // 顯示虛擬帳號欄位（非手動才顯示）
     const addrObjR = addresses.find(a=>a.name===r.addr);
     const accField = document.getElementById('f-acc-field');
-    if(accField) accField.style.display = (!addrObjR?.payType || addrObjR?.payType==='manual') ? 'none' : '';
+    const accInput = document.getElementById('f-acc');
+    const isManual = !addrObjR?.payType || addrObjR?.payType==='manual';
+    if(accField) accField.style.display = isManual ? 'none' : '';
+    // 有帳號時唯讀
+    if(accInput) {
+      const hasAcc = !!(r.acc);
+      accInput.readOnly = hasAcc;
+      accInput.style.background = hasAcc ? 'var(--surface2)' : '';
+      accInput.style.color = hasAcc ? 'var(--text2)' : '';
+    }
     setElecType(r.elecType||'monthly');
     updateExpected();
   } else {
