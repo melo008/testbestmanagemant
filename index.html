@@ -948,7 +948,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <span style="font-size:12px;color:var(--text2);">本月應收（租金部分）</span>
         <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;" id="f-expected">$0</span>
       </div>
-      <div class="ff full"><label>虛擬帳號（向綠界申請後填入）</label><input type="text" id="f-acc" placeholder="例：809001xxxxxxxxx"></div>
+      <div class="ff full" id="f-acc-field" style="display:none;"><label>虛擬帳號</label><input type="text" id="f-acc" placeholder="例：809001xxxxxxxxx" style="font-family:'DM Mono',monospace;"></div>
       <div class="ff"><label>租客匯款帳號後五碼</label><input type="text" id="f-bank-last5" placeholder="例：12345" maxlength="5"></div>
       <div class="ff full"><label>備註</label><textarea id="f-note" placeholder="其他備註…" style="min-height:50px;"></textarea></div>
     </div>
@@ -2970,6 +2970,10 @@ function openRoomModal(id){
     const bl5=document.getElementById('f-bank-last5');if(bl5)bl5.value=r.bankLast5||'';
     document.getElementById('f-note').value=r.note||'';
     populateAddrSelect(r.addr||'未分類');
+    // 顯示虛擬帳號欄位（只有綠界才顯示）
+    const addrObjR = addresses.find(a=>a.name===r.addr);
+    const accField = document.getElementById('f-acc-field');
+    if(accField) accField.style.display = (!addrObjR?.payType || addrObjR?.payType==='manual') ? 'none' : '';
     setElecType(r.elecType||'monthly');
     updateExpected();
   } else {
