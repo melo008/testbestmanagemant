@@ -1,150 +1,186 @@
 // api/cron-monthly.js
-// Vercel Cron Job：每月1號自動幫所有房間取 PAYUNi 虛擬帳號
-// 在 vercel.json 設定：{ "crons": [{ "path": "/api/cron-monthly", "schedule": "0 2 1 * *" }] }
-// 每月1號 台灣時間 早上10:00（UTC+8 = UTC 02:00）執行
+// 每月1號 台灣時間早上10:00（UTC 02:00）自動執行
+// 幫每間房間取綠界虛擬帳號
 
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
+// ── 綠界設定 ──
+const MERCHANT_ID = process.env.ECPAY_MERCHANT_ID || '3002607';
+const HASH_KEY    = process.env.ECPAY_HASH_KEY    || 'pwFHCqoQZGmho4w6';
+const HASH_IV     = process.env.ECPAY_HASH_IV     || 'EkRm7iFT261dpevs';
+const IS_SANDBOX  = process.env.ECPAY_SANDBOX !== 'false';
+const ECPAY_URL   = IS_SANDBOX
+  ? 'https://ecpayment-stage.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode'
+  : 'https://ecpayment.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode';
+
+// ── Supabase ──
 const SUPA_URL = process.env.SUPABASE_URL || 'https://fuvfvfmprxnhwxkexmtr.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY;
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
-const BASE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'https://testbestmanagemant.vercel.app';
 
-export default async function handler(req, res) {
-  // 驗證是 Vercel Cron 呼叫（或手動測試）
-  const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && 
-      req.headers['x-api-key'] !== INTERNAL_API_KEY) {
+function aesEncrypt(dataObj) {
+  const key = Buffer.from(HASH_KEY, 'utf8');
+  const iv  = Buffer.from(HASH_IV, 'utf8');
+  const cipher = crypto.createCipheriv('aes-128-cbc', key, iv);
+  const urlEncoded = encodeURIComponent(JSON.stringify(dataObj));
+  return Buffer.concat([cipher.update(urlEncoded, 'utf8'), cipher.final()]).toString('base64');
+}
+
+function aesDecrypt(base64Data) {
+  try {
+    const key = Buffer.from(HASH_KEY, 'utf8');
+    const iv  = Buffer.from(HASH_IV, 'utf8');
+    const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
+    const dec = Buffer.concat([
+      decipher.update(Buffer.from(base64Data, 'base64')),
+      decipher.final()
+    ]).toString('utf8');
+    return JSON.parse(decodeURIComponent(dec));
+  } catch(e) { return null; }
+}
+
+function getMerchantTradeDate() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
+// 取綠界虛擬帳號
+async function getEcpayAccount({ merTradeNo, amount, itemName, expireDays = 30 }) {
+  const dataParams = {
+    ATMInfo: { ATMBankCode: '007', ExpireDate: String(expireDays) },
+    ChoosePayment: 'ATM',
+    MerchantID: MERCHANT_ID,
+    OrderInfo: {
+      ItemName:          itemName.slice(0,400),
+      MerchantTradeDate: getMerchantTradeDate(),
+      MerchantTradeNo:   merTradeNo.replace(/[^a-zA-Z0-9]/g,'').slice(0,20),
+      ReturnURL:         process.env.ECPAY_NOTIFY_URL || 'https://testbestmanagemant.vercel.app/api/ecpay-webhook',
+      TotalAmount:       String(Math.round(Number(amount))),
+      TradeDesc:         itemName.slice(0,200),
+    }
+  };
+
+  const encryptedData = aesEncrypt(dataParams);
+  const requestBody = {
+    MerchantID: MERCHANT_ID,
+    RqHeader:   { Timestamp: Math.floor(Date.now()/1000) },
+    Data:       encryptedData,
+  };
+
+  const resp = await fetch(ECPAY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+  });
+
+  const text = await resp.text();
+  const result = JSON.parse(text);
+
+  if (result.TransCode === 1 && result.Data) {
+    const dec = aesDecrypt(result.Data);
+    if (dec?.RtnCode === 1) {
+      return {
+        success:    true,
+        vAccount:   dec.ATMInfo?.vAccount,
+        bankCode:   dec.ATMInfo?.BankCode,
+        expireDate: dec.ATMInfo?.ExpireDate,
+        tradeNo:    dec.OrderInfo?.TradeNo,
+      };
+    }
+    return { success: false, rtnCode: dec?.RtnCode, rtnMsg: dec?.RtnMsg };
+  }
+  return { success: false, transCode: result.TransCode, transMsg: result.TransMsg };
+}
+
+module.exports = async function handler(req, res) {
+  // 驗證（Vercel Cron 或手動觸發）
+  const auth = req.headers.authorization;
+  const key  = req.headers['x-api-key'];
+  if (auth !== `Bearer ${process.env.CRON_SECRET}` && key !== process.env.INTERNAL_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const db = createClient(SUPA_URL, SUPA_KEY);
   const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-  console.log(`Cron: Starting monthly ATM generation for ${monthKey}`);
+  const YM  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
 
   const results = { success: [], failed: [], skipped: [] };
 
   try {
-    // ── 讀取所有有租客的房間 ──
+    // 讀取所有房間
     const { data: rooms, error } = await db
       .from('test_rooms')
-      .select('id, name, addr, tenant, rent, elec, elec_type, org_id')
-      .not('tenant', 'is', null)
-      .neq('tenant', '');
+      .select('id,name,addr,rent,elec,elec_type,elec_acc');
 
     if (error) throw error;
-    console.log(`Cron: Found ${rooms.length} rooms with tenants`);
+    console.log(`Cron: ${rooms.length} 間房間`);
 
-    // ── 讀取組織設定（收款方式）──
-    const { data: orgs } = await db
-      .from('test_organizations')
-      .select('id, name, payment_type, payuni_mer_id');
-
-    const orgMap = {};
-    (orgs || []).forEach(o => { orgMap[o.id] = o; });
-
-    // ── 逐間房間取號 ──
     for (const room of rooms) {
-      // 確認這個組織是否使用 PAYUNi
-      const org = orgMap[room.org_id];
-      const paymentType = org?.payment_type || 'manual';
+      const shortId = room.id.slice(-6).replace(/[^a-zA-Z0-9]/g,'');
 
-      if (paymentType !== 'payuni') {
-        results.skipped.push({ roomId: room.id, reason: `payment_type=${paymentType}` });
-        continue;
-      }
+      // ── 取租金虛擬帳號 ──
+      const rentTradeNo = `R${shortId}${YM}`;
+      const rentAmount  = (room.rent || 0) + (room.elec_type === 'monthly' ? (room.elec || 0) : 0);
 
-      const amount = (room.rent || 0) + (room.elec_type === 'monthly' ? (room.elec || 0) : 0);
+      await new Promise(r => setTimeout(r, 300)); // 避免太快
 
-      if (amount <= 0) {
-        results.skipped.push({ roomId: room.id, reason: 'amount=0' });
-        continue;
-      }
+      const rentResult = await getEcpayAccount({
+        merTradeNo: rentTradeNo,
+        amount:     rentAmount || 100, // 最少 100 元
+        itemName:   `${room.name || room.id}月租`,
+        expireDays: 30,
+      });
 
-      // MerTradeNo 格式：roomId_月份
-      const merTradeNo = `${room.id}_${monthKey}`.replace(/[^A-Za-z0-9\-_]/g, '').slice(0, 25);
+      if (rentResult.success) {
+        const updateData = { acc: rentResult.vAccount };
 
-      try {
-        const atmRes = await fetch(`${BASE_URL}/api/payuni-atm`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': INTERNAL_API_KEY,
-          },
-          body: JSON.stringify({
-            roomId: room.id,
-            roomName: room.name,
-            amount,
-            merTradeNo,
-            bankType: '004', // 玉山銀行
-          }),
-        });
-
-        const atmData = await atmRes.json();
-
-        if (atmData.success && atmData.payNo) {
-          // 存虛擬帳號到 test_rooms
-          await db
-            .from('test_rooms')
-            .update({
-              acc: atmData.payNo,
-              bank_last5: atmData.payNo.slice(-5),
-            })
-            .eq('id', room.id);
-
-          results.success.push({
-            roomId: room.id,
-            roomName: room.name,
-            payNo: atmData.payNo,
-            amount,
+        // ── 儲值電費：再取一個虛擬帳號 ──
+        if (room.elec_type === 'prepay') {
+          await new Promise(r => setTimeout(r, 300));
+          const elecTradeNo = `E${shortId}${YM}`;
+          const elecResult  = await getEcpayAccount({
+            merTradeNo: elecTradeNo,
+            amount:     1000, // 儲值電費固定金額，可調整
+            itemName:   `${room.name || room.id}電費儲值`,
+            expireDays: 30,
           });
-
-          // 間隔 500ms 避免 API 限流
-          await new Promise(r => setTimeout(r, 500));
-
+          if (elecResult.success) {
+            updateData.elec_acc = elecResult.vAccount;
+            results.success.push({ roomId: room.id, name: room.name, rentAcc: rentResult.vAccount, elecAcc: elecResult.vAccount });
+          } else {
+            results.failed.push({ roomId: room.id, name: room.name, type: 'elec', error: elecResult.rtnMsg });
+            results.success.push({ roomId: room.id, name: room.name, rentAcc: rentResult.vAccount });
+          }
         } else {
-          results.failed.push({
-            roomId: room.id,
-            roomName: room.name,
-            error: atmData.message || 'ATM API failed',
-          });
+          results.success.push({ roomId: room.id, name: room.name, rentAcc: rentResult.vAccount });
         }
 
-      } catch (roomErr) {
-        results.failed.push({
-          roomId: room.id,
-          roomName: room.name,
-          error: roomErr.message,
-        });
+        // 寫回 Supabase
+        await db.from('test_rooms').update(updateData).eq('id', room.id);
+      } else {
+        results.failed.push({ roomId: room.id, name: room.name, type: 'rent', error: rentResult.rtnMsg || rentResult.transMsg });
       }
     }
 
-    // ── 寫入 Log ──
+    // 寫入 Log
     await db.from('test_audit_log').insert({
-      user_id: 'cron',
+      user_id:   'cron',
       user_name: 'Vercel Cron',
-      action: '每月自動取號',
-      target: monthKey,
-      detail: `成功：${results.success.length} 間，失敗：${results.failed.length} 間，跳過：${results.skipped.length} 間`,
+      action:    '每月自動取號',
+      target:    YM,
+      detail:    `成功：${results.success.length} 間，失敗：${results.failed.length} 間`,
     });
 
-    console.log('Cron completed:', results);
+    console.log('Cron 完成:', results);
     return res.status(200).json({
-      monthKey,
-      summary: {
-        success: results.success.length,
-        failed: results.failed.length,
-        skipped: results.skipped.length,
-      },
-      details: results,
+      monthKey: YM,
+      summary:  { success: results.success.length, failed: results.failed.length },
+      details:  results,
     });
 
   } catch (err) {
     console.error('Cron error:', err);
     return res.status(500).json({ error: err.message });
   }
-}
+};
