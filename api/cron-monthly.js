@@ -173,7 +173,13 @@ module.exports = async function handler(req, res) {
         }
 
         // 寫回 Supabase
-        await db.from('test_rooms').update(updateData).eq('id', room.id);
+        const { error: updateErr } = await db.from('test_rooms').update(updateData).eq('id', room.id);
+        if(updateErr) {
+          console.error('Update error:', room.id, updateErr);
+          results.failed.push({ roomId: room.id, name: room.name, type: 'update', error: updateErr.message });
+        } else {
+          console.log('Updated room', room.id, 'acc:', updateData.acc);
+        }
       } else {
         results.failed.push({ roomId: room.id, name: room.name, type: 'rent', error: rentResult.rtnMsg || rentResult.transMsg });
       }
