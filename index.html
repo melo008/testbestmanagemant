@@ -1205,17 +1205,17 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <div class="ff full" id="org-payuni-fields">
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:8px;">PAYUNi 串接金鑰（選填）</label>
           <div class="fg">
-            <div class="ff"><label>PAYUNi 商店代號（MerID）</label><input type="text" id="org-payuni-mer-id" placeholder="例：U003275680"></div>
-            <div class="ff"><label>Hash Key</label><input type="text" id="org-payuni-hash-key" placeholder="Hash Key"></div>
-            <div class="ff"><label>IV Key</label><input type="text" id="org-payuni-hash-iv" placeholder="IV Key"></div>
+            <div class="ff"><label>PAYUNi 商店代號（MerID）</label><input type="text" id="org-payuni-mer-id" placeholder="例：U003275680" oninput="this.value=this.value.replace(/\s/g,'')"></div>
+            <div class="ff"><label>Hash Key</label><input type="text" id="org-payuni-hash-key" placeholder="Hash Key" oninput="this.value=this.value.replace(/\s/g,'')"></div>
+            <div class="ff"><label>IV Key</label><input type="text" id="org-payuni-hash-iv" placeholder="IV Key" oninput="this.value=this.value.replace(/\s/g,'')"></div>
           </div>
         </div>
         <div class="ff full" style="margin-top:12px;">
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:8px;">綠界 串接金鑰（選填）</label>
           <div class="fg">
-            <div class="ff"><label>綠界 MerchantID</label><input type="text" id="org-ecpay-merchant-id" placeholder="例：3002607"></div>
-            <div class="ff"><label>Hash Key</label><input type="text" id="org-ecpay-hash-key" placeholder="Hash Key"></div>
-            <div class="ff"><label>Hash IV</label><input type="text" id="org-ecpay-hash-iv" placeholder="Hash IV"></div>
+            <div class="ff"><label>綠界 MerchantID</label><input type="text" id="org-ecpay-merchant-id" placeholder="例：3002607" oninput="this.value=this.value.replace(/\s/g,'')"></div>
+            <div class="ff"><label>Hash Key</label><input type="text" id="org-ecpay-hash-key" placeholder="Hash Key" oninput="this.value=this.value.replace(/\s/g,'')"></div>
+            <div class="ff"><label>Hash IV</label><input type="text" id="org-ecpay-hash-iv" placeholder="Hash IV" oninput="this.value=this.value.replace(/\s/g,'')"></div>
           </div>
           <div style="margin-top:8px;background:var(--surface2);border-radius:8px;padding:8px 12px;">
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">付款通知網址（填入綠界後台）</div>
@@ -2700,6 +2700,9 @@ function saveOrg(){
   const payuniMerId=(document.getElementById('org-payuni-mer-id')?.value||'').trim();
   const payuniHashKey=(document.getElementById('org-payuni-hash-key')?.value||'').trim();
   const payuniHashIv=(document.getElementById('org-payuni-hash-iv')?.value||'').trim();
+  const ecpayMerchantId=(document.getElementById('org-ecpay-merchant-id')?.value||'').trim();
+  const ecpayHashKey=(document.getElementById('org-ecpay-hash-key')?.value||'').trim();
+  const ecpayHashIv=(document.getElementById('org-ecpay-hash-iv')?.value||'').trim();
   if(editingOrgId){
     const o=organizations.find(x=>x.id===editingOrgId);
     if(!o) return;
@@ -2707,10 +2710,14 @@ function saveOrg(){
     o.payuniMerId=payuniMerId;
     o.payuniHashKey=payuniHashKey;
     o.payuniHashIv=payuniHashIv;
+    o.ecpayMerchantId=ecpayMerchantId;
+    o.ecpayHashKey=ecpayHashKey;
+    o.ecpayHashIv=ecpayHashIv;
   } else {
     organizations.push({
       id:'org'+Date.now(), name,
       payuniMerId, payuniHashKey, payuniHashIv,
+      ecpayMerchantId, ecpayHashKey, ecpayHashIv,
       createdAt:new Date().toLocaleDateString('zh-TW')
     });
   }
