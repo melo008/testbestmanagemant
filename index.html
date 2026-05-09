@@ -4430,6 +4430,7 @@ function copyBankWebhook(){
 (async()=>{
   await load();
   await loadMgrExpenses();
+  renderAll();
   try{ const savedGwMode=localStorage.getItem('rg_gw_mode')||'ecpay'; if(savedGwMode==='bank') switchGw('bank'); }catch(e){}
 })();
 
