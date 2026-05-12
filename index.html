@@ -3120,7 +3120,10 @@ function renderAddrMgr(){
       <td style="font-size:13px;">${roomCount} 間</td>
       <td style="font-size:12px;">${elecLabel}</td>
       <td style="font-size:12px;color:var(--text2);">${mgrNames.length>0?mgrNames.join('、'):'<span style="color:var(--text3)">未指派</span>'}</td>
-      <td><button class="btn btn-sm" onclick="openAddrMgrModal('${a.name}')">設定</button></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-sm" onclick="openAddrMgrModal('${a.name}')">設定</button>
+        ${a.payType==='ecpay'?`<button class="btn btn-sm" style="background:var(--blue-bg);color:var(--blue-dk);border:1px solid var(--blue-lt);" onclick="triggerAddrGetAcc('${a.name}')">取號</button>`:''}
+      </td>
     </tr>`;
   }).join('');
 }
@@ -3262,6 +3265,31 @@ function saveAddrMgr(){
   a.bankName = (document.getElementById('addr-bank-name')?.value||'').trim();
   a.bankAccount = (document.getElementById('addr-bank-acc')?.value||'').trim();
   save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
+}
+
+async function triggerAddrGetAcc(addrName){
+  if(!confirm(`確定要為「${addrName}」地址下所有房間重新取號？\n已有帳號的房間將被覆蓋。`)) return;
+  toast('取號中，請稍候...');
+  try{
+    const resp = await fetch('/api/ecpay-atm-addr', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': 'hao2026secret'
+      },
+      body: JSON.stringify({ addrName })
+    });
+    const data = await resp.json();
+    if(data.success){
+      toast(`✓ 取號完成！成功 ${data.success} 間，失敗 ${data.failed} 間`);
+      await load();
+      renderAll();
+    } else {
+      toast('取號失敗：' + (data.error||'未知錯誤'));
+    }
+  } catch(e){
+    toast('取號失敗：' + e.message);
+  }
 }
 
 async function deleteAddr(){
