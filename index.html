@@ -989,11 +989,6 @@ tr:hover td{background:rgba(0,0,0,.015);}
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canQuickMatch"> 快速對帳</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canDeleteRoom"> 刪除房間</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canAddAccount"> 新增帳號</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canPayManual" checked> 手動對帳</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canPayBank"> 銀行轉帳</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canPayEcpay"> 綠界收款</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canPayPayuni"> PAYUNi 收款</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--border);border-radius:6px;"><input type="checkbox" class="perm-checkbox" data-perm="canPayBackend"> 幕後取號</label>
         </div>
       </div>
     </div>
@@ -1043,7 +1038,7 @@ tr:hover td{background:rgba(0,0,0,.015);}
     <!-- 收款方式 -->
     <div id="addr-pay-section" style="padding:12px 1.25rem;border-top:1px solid var(--border);">
       <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;">收款方式</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
         <div id="addr-pay-manual" onclick="setAddrPay('manual')" style="border:2px solid var(--text);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
           <div style="font-size:12px;font-weight:600;">手動對帳</div>
         </div>
@@ -1056,19 +1051,27 @@ tr:hover td{background:rgba(0,0,0,.015);}
         <div id="addr-pay-payuni" onclick="setAddrPay('payuni')" style="border:1px solid var(--border);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
           <div style="font-size:12px;font-weight:600;">PAYUNi</div>
         </div>
-        <div id="addr-pay-backend" onclick="setAddrPay('backend')" style="border:1px solid var(--border);border-radius:8px;padding:7px 6px;cursor:pointer;text-align:center;">
-          <div style="font-size:12px;font-weight:600;">幕後取號</div>
-          <div style="font-size:9px;color:var(--text3);margin-top:2px;">公司戶用</div>
-        </div>
-      </div>
-      <div id="addr-backend-fields" style="display:none;">
-        <div style="font-size:12px;color:var(--text3);background:var(--surface2);padding:8px 10px;border-radius:6px;">🏦 銀行公司戶幕後取號（開通後自動啟用）</div>
       </div>
       <div id="addr-bank-fields" style="display:none;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div><label style="font-size:12px;color:var(--text2);">銀行名稱</label><input type="text" id="addr-bank-name" placeholder="例：玉山銀行" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"></div>
-          <div><label style="font-size:12px;color:var(--text2);">銀行帳號</label><input type="text" id="addr-bank-acc" placeholder="帳號" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"></div>
+        <div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;align-items:end;">
+          <div>
+            <label style="font-size:12px;color:var(--text2);">銀行代碼</label>
+            <input type="text" id="addr-bank-code" placeholder="例：822" maxlength="3"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"
+              oninput="const _n=getBankName(this.value);if(_n){document.getElementById('addr-bank-name').value=_n;}">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);">銀行名稱</label>
+            <input type="text" id="addr-bank-name" placeholder="自動帶入或手動輸入"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);">銀行帳號</label>
+            <input type="text" id="addr-bank-acc" placeholder="帳號"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;margin-top:4px;">
+          </div>
         </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;">💡 輸入銀行代碼（如 822）會自動帶入銀行名稱</div>
       </div>
       <div id="addr-ecpay-fields" style="display:none;">
         <div style="font-size:12px;color:var(--text3);background:var(--blue-bg);padding:8px 10px;border-radius:6px;">使用組織設定的綠界 MerchantID 自動取號</div>
@@ -1329,6 +1332,29 @@ tr:hover td{background:rgba(0,0,0,.015);}
 </div>
 
 <script>
+
+// ── 台灣銀行代碼對照表 ──
+const TW_BANK_CODES = {
+  '004':'臺灣銀行','005':'臺灣土地銀行','006':'合作金庫商業銀行',
+  '007':'第一商業銀行','008':'華南商業銀行','009':'彰化商業銀行',
+  '011':'上海商業儲蓄銀行','012':'台北富邦商業銀行','013':'國泰世華商業銀行',
+  '015':'中國輸出入銀行','016':'高雄銀行','017':'兆豐國際商業銀行',
+  '018':'全國農業金庫','021':'花旗(台灣)商業銀行','039':'澳盛(台灣)商業銀行',
+  '048':'王道商業銀行','050':'臺灣中小企業銀行','052':'渣打國際商業銀行',
+  '053':'台中商業銀行','054':'京城商業銀行','081':'滙豐(台灣)商業銀行',
+  '101':'瑞興商業銀行','102':'華泰商業銀行','103':'臺灣新光商業銀行',
+  '108':'陽信商業銀行','118':'板信商業銀行','147':'三信商業銀行',
+  '700':'中華郵政','803':'聯邦商業銀行','805':'遠東國際商業銀行',
+  '806':'元大商業銀行','807':'永豐商業銀行','808':'玉山商業銀行',
+  '809':'凱基商業銀行','810':'星展(台灣)商業銀行','812':'台新國際商業銀行',
+  '816':'安泰商業銀行','822':'中國信託商業銀行','824':'連線商業銀行(LINE Bank)',
+  '825':'樂天國際商業銀行','826':'將來商業銀行',
+};
+function getBankName(code){ return TW_BANK_CODES[String(code).trim()]||''; }
+function formatBankDisplay(code, name, acc){
+  const _name = name || getBankName(code) || code;
+  return [_name, acc].filter(Boolean).join(' ');
+}
 // ── DATA ──
 let rooms=[], payments={}, managers=[], addresses=[], tenantArchive=[], organizations=[], curYear, curMonth, editingRoomId=null, currentOrg=null;
 let currentUser=null, activeAddr='all';
@@ -1432,6 +1458,7 @@ async function save(){
         managers:a.managers||[],
         org_id:a.org_id||getCurrentOrgId()||null,
         pay_type:a.payType||'manual',
+        bank_code:a.bankCode||null,
         bank_name:a.bankName||null,
         bank_account:a.bankAccount||null
       })),{onConflict:'name'});
@@ -1531,7 +1558,7 @@ async function load(){
       elecAcc:a.elec_acc||'', elecPrice:a.elec_price||0,
       managers:a.managers||[], org_id:a.org_id||null,
       payType:a.pay_type||'manual',
-      bankName:a.bank_name||'', bankAccount:a.bank_account||''
+      bankCode:a.bank_code||'', bankName:a.bank_name||'', bankAccount:a.bank_account||''
     }));
     // Archive
     const {data:arcData}=await db.from('test_tenant_archive').select('*');
@@ -2053,13 +2080,14 @@ function renderRooms(){
         const _a=addresses.find(x=>x.name===(r.addr||''));
         const _pt=_a?.payType||'manual';
         if(_pt==='bank'){
-          const _bn=_a?.bankName||''; const _ba=_a?.bankAccount||'';
-          return _bn||_ba?`🏦 ${_bn} ${_ba}`.trim():'尚未設定銀行帳號';
+          const _bc=_a?.bankCode||''; const _bn=_a?.bankName||getBankName(_bc)||''; const _ba=_a?.bankAccount||'';
+          if(!_bn&&!_ba) return '尚未設定銀行帳號';
+          return `🏦 ${_bc?_bc+' ':''}`+[_bn,_ba].filter(Boolean).join(' ');
         }
         if(_pt==='ecpay'||_pt==='payuni'||_pt==='backend'){
           return r.acc||'尚未取號';
         }
-        return ''; // manual 不顯示
+        return '';
       })()}</div>
       <div class="rc-meta"><span>${r.addr?'📍 '+r.addr:'未分類'}</span><span class="rc-rent">$${r.rent.toLocaleString()}</span></div>
       ${r.phone?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📞 ${r.phone}</div>`:''}
@@ -2242,7 +2270,15 @@ function renderHistory(){
         <div style="font-size:11px;color:var(--text2);">${r.tenant||'—'}</div>
       </td>
       <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
-      <td class="mono" style="font-size:11px">${r.acc||'—'}</td>
+      <td class="mono" style="font-size:11px">${(()=>{
+        const _a2=addresses.find(x=>x.name===(r.addr||''));
+        const _pt2=_a2?.payType||'manual';
+        if(_pt2==='bank'){
+          const _bc2=_a2?.bankCode||''; const _bn2=_a2?.bankName||getBankName(_bc2)||''; const _ba2=_a2?.bankAccount||'';
+          return _ba2?`${_bc2?_bc2+' ':''}`+[_bn2,_ba2].filter(Boolean).join(' '):'—';
+        }
+        return r.acc||'—';
+      })()}</td>
       <td class="mono">${isVacant?'—':getActualRentLabel(r,pay)}</td>
       <td class="mono" style="font-size:12px;">${pay.actualAmount!=null?'$'+Number(pay.actualAmount).toLocaleString():'—'}</td>
       <td>
@@ -2917,18 +2953,16 @@ let currentAddrPayType = 'inherit';
 
 function setAddrPay(type){
   currentAddrPayType = type;
-  ['manual','bank','ecpay','payuni','backend'].forEach(t=>{
+  ['manual','bank','ecpay','payuni'].forEach(t=>{
     const el=document.getElementById('addr-pay-'+t);
     if(el) el.style.border=t===type?'2px solid var(--text)':'1px solid var(--border)';
   });
   const bankF=document.getElementById('addr-bank-fields');
   const ecpayF=document.getElementById('addr-ecpay-fields');
   const payuniF=document.getElementById('addr-payuni-fields');
-  const backendF=document.getElementById('addr-backend-fields');
   if(bankF) bankF.style.display=type==='bank'?'':'none';
   if(ecpayF) ecpayF.style.display=type==='ecpay'?'':'none';
   if(payuniF) payuniF.style.display=type==='payuni'?'':'none';
-  if(backendF) backendF.style.display=type==='backend'?'':'none';
 }
 
 let editingPermMgrId = null;
@@ -2940,11 +2974,6 @@ const PERM_LIST = [
   {key:'canQuickMatch', label:'快速對帳'},
   {key:'canDeleteRoom', label:'刪除房間'},
   {key:'canAddAccount', label:'新增帳號'},
-  {key:'canPayManual', label:'手動對帳'},
-  {key:'canPayBank', label:'銀行轉帳'},
-  {key:'canPayEcpay', label:'綠界收款'},
-  {key:'canPayPayuni', label:'PAYUNi 收款'},
-  {key:'canPayBackend', label:'幕後取號'},
 ];
 
 function openPermModal(mgrId){
@@ -3233,29 +3262,12 @@ function openAddrMgrModal(name){
   if(addrSaveBtn) addrSaveBtn.style.display=canEdit?'':'none';
   const addrCancelBtn=document.querySelector('#addr-mgr-modal .modal-ft .btn:first-child');
   if(addrCancelBtn) addrCancelBtn.textContent=canEdit?'取消':'關閉';
-  // 載入地址收款方式，根據主要負責人的權限顯示可用選項
-  const _pmId = a.primaryMgr||(a.managers&&a.managers[0])||null;
-  const _pmgr = _pmId ? managers.find(x=>x.id===_pmId) : null;
-  const _isRA = !_pmgr || _pmgr.role==='owner' || _pmgr.role==='superadmin';
-  const _pp = _pmgr?.permissions||{};
-  const _hps = _pmgr && Object.keys(_pp).length>0;
-  const _pms = [
-    {id:'manual',perm:'canPayManual'},
-    {id:'bank',perm:'canPayBank'},
-    {id:'ecpay',perm:'canPayEcpay'},
-    {id:'payuni',perm:'canPayPayuni'},
-    {id:'backend',perm:'canPayBackend'},
-  ];
-  _pms.forEach(pm=>{
-    const el=document.getElementById('addr-pay-'+pm.id); if(!el) return;
-    let allowed = _isRA ? true : (!_hps ? pm.id==='manual' : _pp[pm.perm]===true);
-    el.style.display = allowed?'':'none';
-  });
-  const _cp=a.payType||'manual', _cpm=_pms.find(p=>p.id===_cp);
-  const _ca = _isRA?true:(!_hps?_cp==='manual':_pp[_cpm?.perm]===true);
-  setAddrPay(_ca?_cp:'manual');
+  // 載入地址收款方式
+  setAddrPay(a.payType||'manual');
   const addrBankName=document.getElementById('addr-bank-name');
   const addrBankAcc=document.getElementById('addr-bank-acc');
+  const addrBankCode=document.getElementById('addr-bank-code');
+  if(addrBankCode) addrBankCode.value=a.bankCode||'';
   if(addrBankName) addrBankName.value=a.bankName||'';
   if(addrBankAcc) addrBankAcc.value=a.bankAccount||'';
   // 顯示/隱藏收款方式區塊（管理人唯讀時隱藏）
@@ -3323,7 +3335,9 @@ async function saveAddrMgr(){
   else if(isOrgOwner()&&!a.org_id) a.org_id=currentUser.org_id||null; // org_owner 自動帶入
   // 儲存收款方式
   a.payType = currentAddrPayType;
-  a.bankName = (document.getElementById('addr-bank-name')?.value||'').trim();
+  a.bankCode = (document.getElementById('addr-bank-code')?.value||'').trim();
+  const _autoName=getBankName(a.bankCode);
+  a.bankName = (document.getElementById('addr-bank-name')?.value||'').trim()||_autoName;
   a.bankAccount = (document.getElementById('addr-bank-acc')?.value||'').trim();
   await save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
 }
@@ -3359,8 +3373,8 @@ async function deleteAddr(){
   if(roomCount>0){ toast(`此地址還有 ${roomCount} 間房間，請先將房間移至其他地址`); return; }
   if(!confirm(`確定刪除地址「${editingAddrName}」？`)) return;
   // 從 Supabase 刪除
-  const {error:_delErr}=await db.from('test_addresses').delete().eq('name', editingAddrName);
-  if(_delErr){ toast('❌ 刪除失敗：' + _delErr.message); return; }
+  const {error:_delE}=await db.from('test_addresses').delete().eq('name', editingAddrName);
+  if(_delE){ toast('❌ 刪除失敗：'+_delE.message); return; }
   addresses = addresses.filter(a=>a.name!==editingAddrName);
   closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址已刪除');
 }
@@ -4395,24 +4409,7 @@ function exportMgrRpt(){
       return d&&!isNaN(d)&&d.getFullYear()===y&&d.getMonth()+1===m;
     }).reduce((s,t)=>s+t.amount,0):0;
     const expectedAmt=isVacant?0:(r.rent||0)+elecMonthly;
-    const _pay2=(payments[`${y}-${String(m).padStart(2,'0')}`]||{})[r.id];
-    const _fmtPaid=_pay2?.paidAt?new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(_pay2.paidAt)):'—';
-    let _rentalPeriod='—';
-    if(!isVacant&&r.checkin){
-      const _ci=fixDate(r.checkin)||r.checkin;
-      const _ciParts=_ci.split('-').map(Number);
-      if(_ciParts.length===3){
-        const _ciDay=_ciParts[2];
-        const _sDate=new Date(y,m-1,_ciDay);
-        const _eDate=new Date(y,m,_ciDay-1);
-        const _fmt2=d=>`${d.getFullYear()-1911}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-        _rentalPeriod=`${_fmt2(_sDate)}~${_fmt2(_eDate)}`;
-      }
-    }
-    const checkinDisp=fixDate(r.checkin)||r.checkin||'—';
-    const checkoutDisp=fixDate(r.checkout)||r.checkout||'—';
-    const depositDisp=r.deposit>0?('$'+r.deposit.toLocaleString()):'—';
-    return [r.name,r.addr,r.tenant||'空房',statusLabel,isVacant?'':('$'+(r.rent||0).toLocaleString()),isVacant?'':r.elecType==='prepay'?('⚡$'+elecPrepay.toLocaleString()):elecMonthly>0?('$'+elecMonthly.toLocaleString()):'',isVacant?'':('$'+expectedAmt.toLocaleString()),_rentalPeriod,_fmtPaid,checkinDisp,checkoutDisp,depositDisp];
+    return [r.name,r.addr,r.tenant||'空房',statusLabel,isVacant?'':('$'+(r.rent||0).toLocaleString()),isVacant?'':r.elecType==='prepay'?('⚡$'+elecPrepay.toLocaleString()):elecMonthly>0?('$'+elecMonthly.toLocaleString()):'',isVacant?'':('$'+expectedAmt.toLocaleString())];
   });
 
   // 建立 CSV
@@ -4431,7 +4428,7 @@ function exportMgrRpt(){
     ['實際月收入','$'+netIncome.toLocaleString()],
     [],
     ['【房間明細】'],
-    ['房間','地址','租客','狀態','月租金','電費','應收','收租期間（民國）','收款時間','入住日期','退租日期','押金'],
+    ['房間','地址','租客','狀態','月租金','電費','應收'],
     ...roomRows
   ];
 
