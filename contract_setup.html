@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>合約座標設定工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;height:100vh}
+.bar{background:#16213e;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.bar h1{font-size:14px;font-weight:600;flex:1}
+.info{background:#0f3460;border-radius:8px;padding:8px 14px;font-size:12px;font-family:monospace;min-width:260px}
+.hint{font-size:11px;color:#94a3b8;flex:1;text-align:right}
+select,button{padding:6px 12px;border-radius:6px;border:none;font-size:12px;cursor:pointer}
+select{background:#0f3460;color:#fff}
+button{background:#4f8ef7;color:#fff;font-weight:600}
+.btn-copy{background:#22c55e}
+.layout{display:flex;flex:1;overflow:hidden}
+.panel{width:300px;background:#16213e;border-right:1px solid #0f3460;padding:16px;overflow-y:auto;flex-shrink:0}
+.panel h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
+.zone-item{background:#0f3460;border-radius:8px;padding:10px;margin-bottom:8px;position:relative}
+.zone-item label{font-size:11px;color:#94a3b8;display:block;margin-bottom:4px}
+.zone-item input{width:100%;background:#1a1a2e;border:1px solid #1e3a5f;border-radius:4px;padding:4px 8px;color:#fff;font-size:12px;font-family:monospace}
+.zone-item .zone-name{font-size:12px;font-weight:600;color:#4f8ef7;margin-bottom:6px}
+.zone-item .del{position:absolute;top:8px;right:8px;background:#ef4444;border:none;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer}
+.add-zone{width:100%;padding:8px;background:#1e3a5f;border:1px dashed #334155;border-radius:8px;color:#94a3b8;cursor:pointer;font-size:12px;margin-top:4px}
+.add-zone:hover{background:#243b55;color:#fff}
+.output{background:#0f0f1a;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;color:#86efac;white-space:pre-wrap;word-break:break-all;margin-top:12px;max-height:200px;overflow-y:auto}
+
+.canvas-wrap{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px;gap:20px;flex-direction:column;align-items:center}
+.page-container{position:relative;display:inline-block}
+.page-container canvas{display:block;cursor:crosshair}
+.drag-rect{position:absolute;border:2px solid #4f8ef7;background:rgba(79,142,247,.15);pointer-events:none}
+.placed-zone{position:absolute;border:2px solid #22c55e;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center}
+.placed-zone span{font-size:10px;color:#22c55e;font-weight:600;text-shadow:0 0 4px #000}
+.page-label{text-align:center;font-size:11px;color:#64748b;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>📐 合約簽名座標設定工具</h1>
+  <div class="info" id="coord-info">在 PDF 上拖曳來標記簽名區域</div>
+  <select id="page-sel" onchange="renderPage(+this.value)"></select>
+  <span class="hint">拖曳 = 建立簽名區域 ｜ 紅框 = 已設定</span>
+  <button class="btn-copy" onclick="copyOutput()">複製設定</button>
+</div>
+
+<div class="layout">
+  <div class="panel">
+    <h2>簽名區域設定</h2>
+    <div id="zones-panel"></div>
+    <button class="add-zone" onclick="addZoneManual()">+ 手動新增區域</button>
+    <div class="output" id="output-code"></div>
+  </div>
+  <div class="canvas-wrap" id="canvas-wrap">
+    <div style="color:#64748b;font-size:13px">載入中...</div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const TEMPLATE_URL='https://fuvfvfmprxnhwxkexmtr.supabase.co/storage/v1/object/public/contracts/addr1.pdf';
+const SCALE = 1.4;
+
+let pdfjsDoc=null, zones=[], currentPage=0, dragging=false, dragStart=null, dragRect=null, pageContainers={};
+
+const defaultZones=[
+  {id:'sig_review',  label:'承租人簽章（審閱欄）',   page:0, x:265, yb:700, w:200, h:40},
+  {id:'sig_party',   label:'立約書人承租人',          page:0, x:155, yb:678, w:220, h:40},
+  {id:'sig_p4_name', label:'承租人簽名（第4頁）',     page:3, x:75,  yb:688, w:230, h:40},
+];
+zones = JSON.parse(JSON.stringify(defaultZones));
+
+async function init(){
+  const res=await fetch(TEMPLATE_URL);
+  const buf=await res.arrayBuffer();
+  pdfjsDoc=await pdfjsLib.getDocument({data:buf}).promise;
+  const sel=document.getElementById('page-sel');
+  for(let i=0;i<pdfjsDoc.numPages;i++){
+    const opt=document.createElement('option');
+    opt.value=i; opt.textContent=`第 ${i+1} 頁`;
+    sel.appendChild(opt);
+  }
+  // Render all pages
+  const wrap=document.getElementById('canvas-wrap');
+  wrap.innerHTML='';
+  for(let i=0;i<pdfjsDoc.numPages;i++) await renderPageTo(i, wrap);
+  renderZonesPanel();
+  redrawAllZones();
+}
+
+async function renderPageTo(pageIdx, wrap){
+  const pg=await pdfjsDoc.getPage(pageIdx+1);
+  const vp=pg.getViewport({scale:SCALE});
+  const container=document.createElement('div');
+  container.style.cssText='display:flex;flex-direction:column;align-items:center';
+  const lbl=document.createElement('div');
+  lbl.className='page-label'; lbl.textContent=`第 ${pageIdx+1} 頁`;
+  const pageWrap=document.createElement('div');
+  pageWrap.className='page-container';
+  pageWrap.dataset.page=pageIdx;
+  pageWrap.style.width=vp.width+'px'; pageWrap.style.height=vp.height+'px';
+  const cv=document.createElement('canvas');
+  cv.width=vp.width; cv.height=vp.height;
+  await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+  pageWrap.appendChild(cv);
+  pageContainers[pageIdx]={wrap:pageWrap, vp, cv};
+  // Mouse events
+  pageWrap.addEventListener('mousedown', e=>startDrag(e, pageIdx, vp));
+  pageWrap.addEventListener('mousemove', e=>moveDrag(e, pageIdx, vp));
+  pageWrap.addEventListener('mouseup',   e=>endDrag(e, pageIdx, vp));
+  pageWrap.addEventListener('mousemove', e=>showCoord(e, pageIdx, vp));
+  container.appendChild(lbl);
+  container.appendChild(pageWrap);
+  wrap.appendChild(container);
+}
+
+function canvasToPDF(cx, cy, vp){
+  const x = cx/SCALE;
+  const yb = vp.height/SCALE - cy/SCALE;
+  return {x:Math.round(x), yb:Math.round(yb)};
+}
+
+function pdfToCanvas(x, yb, w, h, vp){
+  const cx=x*SCALE, cy=(vp.height/SCALE - yb - h)*SCALE;
+  return {cx, cy, cw:w*SCALE, ch:h*SCALE};
+}
+
+function showCoord(e, pageIdx, vp){
+  const r=e.currentTarget.getBoundingClientRect();
+  const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  const {x,yb}=canvasToPDF(cx,cy,vp);
+  document.getElementById('coord-info').textContent=`第${pageIdx+1}頁  x:${x}  y:${yb} (pt)`;
+}
+
+let dragPageIdx=null, dragVP=null;
+function startDrag(e, pageIdx, vp){
+  dragging=true; dragPageIdx=pageIdx; dragVP=vp;
+  const r=e.currentTarget.getBoundingClientRect();
+  dragStart={cx:e.clientX-r.left, cy:e.clientY-r.top};
+  dragRect=document.createElement('div');
+  dragRect.className='drag-rect';
+  e.currentTarget.appendChild(dragRect);
+}
+
+function moveDrag(e, pageIdx, vp){
+  if(!dragging||dragPageIdx!==pageIdx) return;
+  const r=e.currentTarget.getBoundingClientRect();
+  const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  const x=Math.min(dragStart.cx,cx), y=Math.min(dragStart.cy,cy);
+  const w=Math.abs(cx-dragStart.cx), h=Math.abs(cy-dragStart.cy);
+  dragRect.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+}
+
+function endDrag(e, pageIdx, vp){
+  if(!dragging||dragPageIdx!==pageIdx) return;
+  dragging=false;
+  const r=e.currentTarget.getBoundingClientRect();
+  const cx2=e.clientX-r.left, cy2=e.clientY-r.top;
+  const ax=Math.min(dragStart.cx,cx2), ay=Math.min(dragStart.cy,cy2);
+  const aw=Math.abs(cx2-dragStart.cx), ah=Math.abs(cy2-dragStart.cy);
+  if(dragRect) dragRect.remove();
+  if(aw<10||ah<10) return;
+  const {x,yb}=canvasToPDF(ax, ay+ah, vp); // yb is bottom of the box
+  const w=Math.round(aw/SCALE), h=Math.round(ah/SCALE);
+  // Ask for label
+  const label=prompt('這個簽名區的名稱？', '承租人簽名');
+  if(!label) return;
+  const id='sig_'+Date.now();
+  zones.push({id, label, page:pageIdx, x, yb, w, h});
+  renderZonesPanel();
+  redrawAllZones();
+  updateOutput();
+}
+
+function redrawAllZones(){
+  // Remove old overlays
+  Object.values(pageContainers).forEach(({wrap})=>{
+    wrap.querySelectorAll('.placed-zone').forEach(el=>el.remove());
+  });
+  zones.forEach(z=>{
+    const pc=pageContainers[z.page]; if(!pc) return;
+    const {cx,cy,cw,ch}=pdfToCanvas(z.x,z.yb,z.w,z.h,pc.vp);
+    const el=document.createElement('div');
+    el.className='placed-zone';
+    el.style.cssText=`left:${cx}px;top:${cy}px;width:${cw}px;height:${ch}px`;
+    el.innerHTML=`<span>${z.label}</span>`;
+    pc.wrap.appendChild(el);
+  });
+}
+
+function renderZonesPanel(){
+  const panel=document.getElementById('zones-panel');
+  panel.innerHTML=zones.map((z,i)=>`
+    <div class="zone-item">
+      <button class="del" onclick="deleteZone(${i})">✕</button>
+      <div class="zone-name">${z.label}</div>
+      <label>id</label><input value="${z.id}" onchange="zones[${i}].id=this.value;updateOutput()">
+      <label>第幾頁(0起)</label><input type="number" value="${z.page}" onchange="zones[${i}].page=+this.value;redrawAllZones();updateOutput()">
+      <label>x (左)</label><input type="number" value="${z.x}" onchange="zones[${i}].x=+this.value;redrawAllZones();updateOutput()">
+      <label>yb (底部)</label><input type="number" value="${z.yb}" onchange="zones[${i}].yb=+this.value;redrawAllZones();updateOutput()">
+      <label>寬</label><input type="number" value="${z.w}" onchange="zones[${i}].w=+this.value;redrawAllZones();updateOutput()">
+      <label>高</label><input type="number" value="${z.h}" onchange="zones[${i}].h=+this.value;redrawAllZones();updateOutput()">
+    </div>`).join('');
+  updateOutput();
+}
+
+function deleteZone(i){ zones.splice(i,1); renderZonesPanel(); redrawAllZones(); }
+function addZoneManual(){
+  const label=prompt('區域名稱？','承租人簽名');
+  if(!label) return;
+  zones.push({id:'sig_'+Date.now(),label,page:currentPage,x:100,yb:400,w:200,h:50});
+  renderZonesPanel(); redrawAllZones();
+}
+
+function updateOutput(){
+  const code=`const SIG_ZONES = ${JSON.stringify(zones,null,2)};`;
+  document.getElementById('output-code').textContent=code;
+}
+
+function copyOutput(){
+  navigator.clipboard.writeText(document.getElementById('output-code').textContent);
+  alert('已複製！貼到 contract.html 的 SIG_ZONES 替換即可。');
+}
+
+function renderPage(i){ currentPage=i; }
+init();
+</script>
+</body>
+</html>
