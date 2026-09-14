@@ -1053,25 +1053,10 @@ tr:hover td{background:rgba(0,0,0,.015);}
         </div>
       </div>
       <div id="addr-bank-fields" style="display:none;">
-        <div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;align-items:end;">
-          <div>
-            <label style="font-size:12px;color:var(--text2);">銀行代碼</label>
-            <input type="text" id="addr-bank-code" placeholder="例：822" maxlength="3"
-              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"
-              oninput="const _n=getBankName(this.value);if(_n){document.getElementById('addr-bank-name').value=_n;}">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--text2);">銀行名稱</label>
-            <input type="text" id="addr-bank-name" placeholder="自動帶入或手動輸入"
-              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--text2);">銀行帳號</label>
-            <input type="text" id="addr-bank-acc" placeholder="帳號"
-              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);outline:none;margin-top:4px;">
-          </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label style="font-size:12px;color:var(--text2);">銀行名稱</label><input type="text" id="addr-bank-name" placeholder="例：玉山銀行" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"></div>
+          <div><label style="font-size:12px;color:var(--text2);">銀行帳號</label><input type="text" id="addr-bank-acc" placeholder="帳號" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-top:4px;"></div>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:6px;">💡 輸入銀行代碼（如 822）會自動帶入銀行名稱</div>
       </div>
       <div id="addr-ecpay-fields" style="display:none;">
         <div style="font-size:12px;color:var(--text3);background:var(--blue-bg);padding:8px 10px;border-radius:6px;">使用組織設定的綠界 MerchantID 自動取號</div>
@@ -1332,29 +1317,6 @@ tr:hover td{background:rgba(0,0,0,.015);}
 </div>
 
 <script>
-
-// ── 台灣銀行代碼對照表 ──
-const TW_BANK_CODES = {
-  '004':'臺灣銀行','005':'臺灣土地銀行','006':'合作金庫商業銀行',
-  '007':'第一商業銀行','008':'華南商業銀行','009':'彰化商業銀行',
-  '011':'上海商業儲蓄銀行','012':'台北富邦商業銀行','013':'國泰世華商業銀行',
-  '015':'中國輸出入銀行','016':'高雄銀行','017':'兆豐國際商業銀行',
-  '018':'全國農業金庫','021':'花旗(台灣)商業銀行','039':'澳盛(台灣)商業銀行',
-  '048':'王道商業銀行','050':'臺灣中小企業銀行','052':'渣打國際商業銀行',
-  '053':'台中商業銀行','054':'京城商業銀行','081':'滙豐(台灣)商業銀行',
-  '101':'瑞興商業銀行','102':'華泰商業銀行','103':'臺灣新光商業銀行',
-  '108':'陽信商業銀行','118':'板信商業銀行','147':'三信商業銀行',
-  '700':'中華郵政','803':'聯邦商業銀行','805':'遠東國際商業銀行',
-  '806':'元大商業銀行','807':'永豐商業銀行','808':'玉山商業銀行',
-  '809':'凱基商業銀行','810':'星展(台灣)商業銀行','812':'台新國際商業銀行',
-  '816':'安泰商業銀行','822':'中國信託商業銀行','824':'連線商業銀行(LINE Bank)',
-  '825':'樂天國際商業銀行','826':'將來商業銀行',
-};
-function getBankName(code){ return TW_BANK_CODES[String(code).trim()]||''; }
-function formatBankDisplay(code, name, acc){
-  const _name = name || getBankName(code) || code;
-  return [_name, acc].filter(Boolean).join(' ');
-}
 // ── DATA ──
 let rooms=[], payments={}, managers=[], addresses=[], tenantArchive=[], organizations=[], curYear, curMonth, editingRoomId=null, currentOrg=null;
 let currentUser=null, activeAddr='all';
@@ -1371,13 +1333,24 @@ async function setStatus(id,s){
   if(!payments[k]) payments[k]={};
   const prev=payments[k][id]||{};
   if(s==='unpaid'){
-    payments[k][id]={status:'unpaid', clearedAt: new Date().toISOString()};
+    // 撤銷付款：清掉電費確認（需重新輸入）
+    payments[k][id]={
+      status:'unpaid',
+      clearedAt: new Date().toISOString(),
+      elecMonthlyAmount: null,
+      elecMonthlyConfirmedAt: null,
+      elecMonthlyBy: null,
+    };
   } else {
+    // 已付款：保留已確認的電費金額
     payments[k][id]={
       status:s,
       paidAt: prev.paidAt||(s!=='unpaid'?new Date().toISOString():null),
       updatedAt: new Date().toISOString(),
-      method: 'manual'
+      method: 'manual',
+      elecMonthlyAmount: prev.elecMonthlyAmount||null,
+      elecMonthlyConfirmedAt: prev.elecMonthlyConfirmedAt||null,
+      elecMonthlyBy: prev.elecMonthlyBy||null,
     };
   }
   await save(); renderAll();
@@ -1425,6 +1398,9 @@ async function save(){
           adjusted_amount:p.adjustedAmount??null,
           adj_history:p.adjHistory||[],
           elec_topup_log:p.elecTopupLog||[],
+          elec_monthly_amount:p.elecMonthlyAmount??null,
+          elec_monthly_confirmed_at:p.elecMonthlyConfirmedAt||null,
+          elec_monthly_by:p.elecMonthlyBy||null,
           updated_at:new Date().toISOString()
         });
       });
@@ -1458,7 +1434,6 @@ async function save(){
         managers:a.managers||[],
         org_id:a.org_id||getCurrentOrgId()||null,
         pay_type:a.payType||'manual',
-        bank_code:a.bankCode||null,
         bank_name:a.bankName||null,
         bank_account:a.bankAccount||null
       })),{onConflict:'name'});
@@ -1530,6 +1505,9 @@ async function load(){
           elecTopupLog:p.elec_topup_log||[],
           elecStatus:p.elec_status||'unpaid',
           elecPaidAt:p.elec_paid_at||null,
+          elecMonthlyAmount:p.elec_monthly_amount||null,
+          elecMonthlyConfirmedAt:p.elec_monthly_confirmed_at||null,
+          elecMonthlyBy:p.elec_monthly_by||null,
           elecAmount:p.elec_amount||null,
           actualAmount:p.actual_amount||null,
           diffAmount:p.diff_amount||null,
@@ -1558,7 +1536,7 @@ async function load(){
       elecAcc:a.elec_acc||'', elecPrice:a.elec_price||0,
       managers:a.managers||[], org_id:a.org_id||null,
       payType:a.pay_type||'manual',
-      bankCode:a.bank_code||'', bankName:a.bank_name||'', bankAccount:a.bank_account||''
+      bankName:a.bank_name||'', bankAccount:a.bank_account||''
     }));
     // Archive
     const {data:arcData}=await db.from('test_tenant_archive').select('*');
@@ -2055,7 +2033,20 @@ function renderRooms(){
           </div>
         </div>`).join('')}
       ${canEdit?`<button class="btn btn-sm" style="font-size:11px;margin-top:2px;" onclick="openElecTopupModal('${r.id}')">+ 記錄儲電</button>`:''}
-    ` : (r.elec>0?`<div class="rc-meta"><span style="color:var(--amber-dk);">⚡ 電費</span><span style="font-family:'DM Mono',monospace;color:var(--amber-dk);">$${r.elec.toLocaleString()}</span></div>`:'');
+    ` : ((!isPrepay&&!isVacant)?(()=>{
+        // 只顯示當前檢視月份的電費（不跨月帶入）
+        const _mk=monthKey();
+        const _ep=payments[_mk]&&payments[_mk][r.id];
+        const _ema=_ep?.elecMonthlyAmount;
+        const _hasAmt=_ema!=null&&_ema>0;
+        return `<div class="rc-meta" style="align-items:center;">
+          <span style="color:var(--amber-dk);">⚡ 電費
+            ${_hasAmt?`<span style="font-family:'DM Mono',monospace;"> $${Number(_ema).toLocaleString()}</span>`:'<span style="color:var(--text3);font-size:11px;"> 未輸入</span>'}
+          </span>
+          ${canEdit?`<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;margin-left:auto;" onclick="openElecMonthlyModal('${r.id}')">確認電費</button>`:''}
+        </div>
+        ${_hasAmt?`<div style="font-size:11px;color:var(--green);margin-bottom:4px;">✓ ${_mk} 電費已確認 · ${_ep?.elecMonthlyBy||'—'}</div>`:''}`;
+      })():'');
     // 待修備忘錄區塊
     const activeRepairs = (r.repairs||[]).filter(rep=>rep.status==='pending');
     const today = new Date(); today.setHours(0,0,0,0);
@@ -2076,19 +2067,7 @@ function renderRooms(){
         <div><div class="rc-name">${r.name}</div><div class="rc-tenant">${isVacant?'—':r.tenant}</div></div>
         ${isVacant?'<span class="badge b-vacant">空房</span>':`<span class="badge ${bc}">${bt}</span>`}
       </div>
-      <div class="rc-acc">${(()=>{
-        const _a=addresses.find(x=>x.name===(r.addr||''));
-        const _pt=_a?.payType||'manual';
-        if(_pt==='bank'){
-          const _bc=_a?.bankCode||''; const _bn=_a?.bankName||getBankName(_bc)||''; const _ba=_a?.bankAccount||'';
-          if(!_bn&&!_ba) return '尚未設定銀行帳號';
-          return `🏦 ${_bc?_bc+' ':''}`+[_bn,_ba].filter(Boolean).join(' ');
-        }
-        if(_pt==='ecpay'||_pt==='payuni'||_pt==='backend'){
-          return r.acc||'尚未取號';
-        }
-        return '';
-      })()}</div>
+      <div class="rc-acc">${r.acc||'尚未設定虛擬帳號'}</div>
       <div class="rc-meta"><span>${r.addr?'📍 '+r.addr:'未分類'}</span><span class="rc-rent">$${r.rent.toLocaleString()}</span></div>
       ${r.phone?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📞 ${r.phone}</div>`:''}
       ${elecSection}
@@ -2097,7 +2076,7 @@ function renderRooms(){
         ${s!=='paid'?`<button class="btn btn-sm btn-success" onclick="setStatus('${r.id}','paid')">✓ 租金已付</button>`:''}
         ${s==='unpaid'?`<button class="btn btn-sm btn-warn" onclick="setStatus('${r.id}','partial')">部分</button>`:''}
         ${s!=='unpaid'?`<button class="btn btn-sm" onclick="setStatus('${r.id}','unpaid')">撤銷</button>`:''}
-        ${canEdit?`<button class="btn btn-sm" onclick="openRoomModal('${r.id}')">編輯</button>`:''}
+        ${canEdit?`<button class="btn btn-sm" onclick="openRoomModal('${r.id}')">編輯</button><button class="btn btn-sm" onclick="openContract('${r.id}')" style="background:var(--green);color:#fff;" title="電子合約">📄 合約</button>`:''}
         ${canDeleteRoomCheck(r)?`<button class="btn btn-sm btn-danger" onclick="deleteRoom('${r.id}')">刪除</button>`:''}
       </div>
     </div>`;
@@ -2173,9 +2152,8 @@ function formatDT(iso){
 // ── 取得實際應收金額（月結含電費，儲值電費分開）──
 function getActualRent(r, pay){
   if(!r||!r.tenant) return 0;
-  // 如果有改帳金額，以改帳為準
   if(pay?.adjustedAmount!=null) return pay.adjustedAmount;
-  if(r.elecType==='monthly') return (r.rent||0)+(r.elec||0);
+  if(r.elecType==='monthly') return (r.rent||0)+(pay?.elecMonthlyAmount||r.elec||0);
   return r.rent||0;
 }
 function getActualRentLabel(r, pay){
@@ -2183,8 +2161,9 @@ function getActualRentLabel(r, pay){
   if(pay?.adjustedAmount!=null){
     return `<span style="color:var(--amber-dk);font-weight:600;">$${pay.adjustedAmount.toLocaleString()}</span>`;
   }
-  if(r.elecType==='monthly'&&r.elec>0)
-    return `$${(r.rent||0).toLocaleString()} <span style="font-size:10px;color:var(--amber-dk)">+電$${r.elec.toLocaleString()}</span>`;
+  const _elecAmt=pay?.elecMonthlyAmount||r.elec||0;
+  if(r.elecType==='monthly'&&_elecAmt>0)
+    return `$${(r.rent||0).toLocaleString()} <span style="font-size:10px;color:var(--amber-dk)">+電$${_elecAmt.toLocaleString()}</span>`;
   return `$${(r.rent||0).toLocaleString()}`;
 }
 
@@ -2270,15 +2249,7 @@ function renderHistory(){
         <div style="font-size:11px;color:var(--text2);">${r.tenant||'—'}</div>
       </td>
       <td style="font-size:12px;color:var(--text2)">${r.addr||'—'}</td>
-      <td class="mono" style="font-size:11px">${(()=>{
-        const _a2=addresses.find(x=>x.name===(r.addr||''));
-        const _pt2=_a2?.payType||'manual';
-        if(_pt2==='bank'){
-          const _bc2=_a2?.bankCode||''; const _bn2=_a2?.bankName||getBankName(_bc2)||''; const _ba2=_a2?.bankAccount||'';
-          return _ba2?`${_bc2?_bc2+' ':''}`+[_bn2,_ba2].filter(Boolean).join(' '):'—';
-        }
-        return r.acc||'—';
-      })()}</td>
+      <td class="mono" style="font-size:11px">${r.acc||'—'}</td>
       <td class="mono">${isVacant?'—':getActualRentLabel(r,pay)}</td>
       <td class="mono" style="font-size:12px;">${pay.actualAmount!=null?'$'+Number(pay.actualAmount).toLocaleString():'—'}</td>
       <td>
@@ -2300,6 +2271,20 @@ function renderHistory(){
     </tr>`;
     // 儲值電費獨立行（每筆已處理的儲電）
     // 綠界自動電費付款行
+    // 月結電費確認行
+    const elecMonthlyRow=(!isPrepay&&!isVacant&&pay.elecMonthlyAmount>0)?`
+      <tr style="background:rgba(245,158,11,.04);">
+        <td style="font-size:12px;color:var(--amber-dk);padding-left:16px;">⚡ ${r.name} 月結電費</td>
+        <td style="font-size:12px;">${r.tenant||'—'}</td>
+        <td style="font-size:12px;">${r.addr||'—'}</td>
+        <td class="mono" style="font-size:11px;">—</td>
+        <td class="mono" style="color:var(--amber-dk);">$${Number(pay.elecMonthlyAmount||0).toLocaleString()}</td>
+        <td><span class="badge" style="background:#FEF3C7;color:#92400E;font-size:11px;">已確認</span></td>
+        <td style="font-size:11px;color:var(--text3);">
+          ${pay.elecMonthlyConfirmedAt?new Date(pay.elecMonthlyConfirmedAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+' · '+( pay.elecMonthlyBy||'—'):'—'}
+        </td>
+        <td></td>
+      </tr>`:'';
     const elecAutoRow=(isPrepay&&!isVacant&&pay.elecStatus==='paid')?`
       <tr style="background:rgba(245,158,11,.06);">
         <td style="font-size:12px;color:var(--amber-dk);padding-left:16px;">⚡ ${r.name} 電費</td>
@@ -2326,7 +2311,7 @@ function renderHistory(){
         </td>
         <td></td>
       </tr>`).join(''):'';
-    return rentRow+elecAutoRow+elecRows;
+    return rentRow+elecMonthlyRow+elecAutoRow+elecRows;
   }).join('');
 }
 
@@ -2334,8 +2319,26 @@ function renderHistory(){
 async function setHistStatus(id,s){
   const k=histMonthKey();
   if(!payments[k]) payments[k]={};
-  if(s==="unpaid") payments[k][id]={status:"unpaid"};
-  else payments[k][id]={status:s,paidAt:new Date().toISOString(),method:"manual"};
+  const prev=payments[k][id]||{};
+  if(s==="unpaid"){
+    // 撤銷：清掉電費確認
+    payments[k][id]={
+      status:"unpaid",
+      elecMonthlyAmount:null,
+      elecMonthlyConfirmedAt:null,
+      elecMonthlyBy:null,
+    };
+  } else {
+    // 已付款：保留電費確認資訊
+    payments[k][id]={
+      status:s,
+      paidAt:prev.paidAt||new Date().toISOString(),
+      method:"manual",
+      elecMonthlyAmount:prev.elecMonthlyAmount||null,
+      elecMonthlyConfirmedAt:prev.elecMonthlyConfirmedAt||null,
+      elecMonthlyBy:prev.elecMonthlyBy||null,
+    };
+  }
   await save(); renderHistory(); toast(s==="paid"?"已標記付款":"已撤銷");
 }
 // ── REPORT ──
@@ -2531,7 +2534,7 @@ function renderReport(){
       return d&&!isNaN(d)&&d.getFullYear()===ry&&d.getMonth()+1===rm;
     }).reduce((s,t)=>s+t.amount,0):0;
     const elecDisplay=isPrepayRoom?elecPrepayTotal:elecMonthly;
-    const expected=isVacant?0:(r.rent||0)+elecMonthly; // 應收：儲值電費不計入租金應收
+    const expected=isVacant?0:(r.rent||0)+(pay?.elecMonthlyAmount||elecMonthly); // 應收：儲值電費不計入租金應收
     // 退租判斷
     const isTerminated=r.checkout&&parseLocalDate(r.checkout)<=today&&r.tenant;
     const checkoutCell=r.checkout?`<span style="color:${isTerminated?'var(--text3)':'var(--text2)'};">${r.checkout}${isTerminated?'<br><span style="font-size:10px;color:var(--text3)">已退租</span>':''}</span>`:'—';
@@ -2867,9 +2870,7 @@ async function loadAuditLog(){
     }
     tbody.innerHTML=data.map(row=>{
       const dt=new Date(row.created_at);
-      const _fmt=new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(dt);
-      const _gp=t=>(_fmt.find(p=>p.type===t)||{value:''}).value;
-      const timeStr=`${_gp('year')}/${_gp('month')}/${_gp('day')} ${_gp('hour')}:${_gp('minute')}`;
+      const timeStr=`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
       return `<tr>
         <td style="font-size:12px;white-space:nowrap;font-family:'DM Mono',monospace;">${timeStr}</td>
         <td style="font-size:12px;">${row.user_name||row.user_id||'—'}</td>
@@ -3088,7 +3089,9 @@ function openRoomModal(id){
     document.getElementById('f-checkin').value=r.checkin||'';
     document.getElementById('f-checkout').value=r.checkout||'';
     document.getElementById('f-deposit').value=r.deposit||'';
-    document.getElementById('f-elec').value=r.elec||'';
+    // 月結電費：優先顯示當月已確認金額，否則顯示 r.elec
+    const _curElecAmt=(r.elecType!=='prepay')?(payments[monthKey()]?.[id]?.elecMonthlyAmount||r.elec||''):(r.elec||'');
+    document.getElementById('f-elec').value=_curElecAmt;
     document.getElementById('f-elec-acc').value=r.elecAcc||'';
     document.getElementById('f-elec-price').value=r.elecPrice||'';
     document.getElementById('f-elec-balance').value=r.elecBalance||'';
@@ -3140,6 +3143,24 @@ async function saveRoom(){
   if(editingRoomId){ const r=rooms.find(x=>x.id===editingRoomId); if(r) Object.assign(r,data); }
   else rooms.push({...data,id:'r'+Date.now()});
   rooms.sort((a,b)=>roomNameSort(a,b));
+  // 月結電費：同步更新當月 payments 記錄
+  const _rmElecType = data.elecType||'monthly';
+  if(_rmElecType==='monthly'){
+    const _mk2=monthKey();
+    if(!payments[_mk2]) payments[_mk2]={};
+    const _rmId=editingRoomId||(data.id||'r'+Date.now());
+    const _prev2=payments[_mk2][_rmId]||{};
+    if(data.elec>0){
+      payments[_mk2][_rmId]={
+        ..._prev2,
+        elecMonthlyAmount:data.elec,
+        elecMonthlyConfirmedAt:_prev2.elecMonthlyConfirmedAt||new Date().toISOString(),
+        elecMonthlyBy:_prev2.elecMonthlyBy||(currentUser?.name||currentUser?.username||''),
+      };
+    } else if(data.elec===0&&_prev2.elecMonthlyAmount){
+      payments[_mk2][_rmId]={..._prev2,elecMonthlyAmount:null,elecMonthlyConfirmedAt:null,elecMonthlyBy:null};
+    }
+  }
   await save(); closeModal('room-modal'); renderAll(); toast(editingRoomId?'已更新':'房間已新增');
 }
 async function topupElec(id){
@@ -3266,8 +3287,6 @@ function openAddrMgrModal(name){
   setAddrPay(a.payType||'manual');
   const addrBankName=document.getElementById('addr-bank-name');
   const addrBankAcc=document.getElementById('addr-bank-acc');
-  const addrBankCode=document.getElementById('addr-bank-code');
-  if(addrBankCode) addrBankCode.value=a.bankCode||'';
   if(addrBankName) addrBankName.value=a.bankName||'';
   if(addrBankAcc) addrBankAcc.value=a.bankAccount||'';
   // 顯示/隱藏收款方式區塊（管理人唯讀時隱藏）
@@ -3335,9 +3354,7 @@ async function saveAddrMgr(){
   else if(isOrgOwner()&&!a.org_id) a.org_id=currentUser.org_id||null; // org_owner 自動帶入
   // 儲存收款方式
   a.payType = currentAddrPayType;
-  a.bankCode = (document.getElementById('addr-bank-code')?.value||'').trim();
-  const _autoName=getBankName(a.bankCode);
-  a.bankName = (document.getElementById('addr-bank-name')?.value||'').trim()||_autoName;
+  a.bankName = (document.getElementById('addr-bank-name')?.value||'').trim();
   a.bankAccount = (document.getElementById('addr-bank-acc')?.value||'').trim();
   await save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址設定已儲存');
 }
@@ -3373,10 +3390,9 @@ async function deleteAddr(){
   if(roomCount>0){ toast(`此地址還有 ${roomCount} 間房間，請先將房間移至其他地址`); return; }
   if(!confirm(`確定刪除地址「${editingAddrName}」？`)) return;
   // 從 Supabase 刪除
-  const {error:_delE}=await db.from('test_addresses').delete().eq('name', editingAddrName);
-  if(_delE){ toast('❌ 刪除失敗：'+_delE.message); return; }
+  await db.from('test_addresses').delete().eq('name', editingAddrName);
   addresses = addresses.filter(a=>a.name!==editingAddrName);
-  closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址已刪除');
+  await save(); closeModal('addr-mgr-modal'); renderAddrMgr(); renderAll(); toast('地址已刪除');
 }
 
 
@@ -3570,6 +3586,60 @@ async function markRepairDone(roomId, repId){
 }
 
 // ── 逾期待修提醒 ──
+
+// ── 月結電費確認 ──
+let elecMonthlyRoomId = null;
+function openElecMonthlyModal(roomId){
+  const r = rooms.find(x=>x.id===roomId); if(!r) return;
+  elecMonthlyRoomId = roomId;
+  document.getElementById('elec-monthly-room-name').textContent = `${r.name}（${r.tenant||'—'}）`;
+  // 月份選項：前兩個月 ~ 當前檢視月份（預設當前檢視月份）
+  const viewedMk = monthKey(); // 當前後台正在看的月份
+  const sel = document.getElementById('elec-monthly-mk');
+  sel.innerHTML = '';
+  for(let i=2; i>=0; i--){
+    const d = new Date(curYear, curMonth-i, 1);
+    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl = `${d.getFullYear()} 年 ${d.getMonth()+1} 月`;
+    const opt = document.createElement('option');
+    opt.value = mk; opt.textContent = lbl;
+    if(i===0) opt.selected = true; // 預設：當前檢視月份
+    sel.appendChild(opt);
+  }
+  // 預填：已有該月金額則帶入
+  const existPay = payments[viewedMk]?.[roomId];
+  // 只有本月已確認過才帶入，否則空值（不帶預設）
+  document.getElementById('elec-monthly-amount').value = existPay?.elecMonthlyAmount>0?existPay.elecMonthlyAmount:'';
+  document.getElementById('elec-monthly-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('elec-monthly-amount').focus(),100);
+}
+function closeElecMonthlyModal(){
+  document.getElementById('elec-monthly-modal').style.display='none';
+  elecMonthlyRoomId = null;
+}
+async function confirmElecMonthly(){
+  if(!elecMonthlyRoomId) return;
+  const mk = document.getElementById('elec-monthly-mk').value;
+  const amt = parseInt(document.getElementById('elec-monthly-amount').value)||0;
+  if(amt<=0){ toast('請輸入電費金額'); return; }
+  if(!payments[mk]) payments[mk]={};
+  if(!payments[mk][elecMonthlyRoomId]) payments[mk][elecMonthlyRoomId]={status:'unpaid'};
+  payments[mk][elecMonthlyRoomId].elecMonthlyAmount = amt;
+  payments[mk][elecMonthlyRoomId].elecMonthlyConfirmedAt = new Date().toISOString();
+  payments[mk][elecMonthlyRoomId].elecMonthlyBy = currentUser?.name||currentUser?.username||'';
+  // 先關 modal + 立即渲染（讓用戶馬上看到更新）
+  closeElecMonthlyModal();
+  renderAll();
+  toast(`⚡ ${mk} 月結電費 $${amt.toLocaleString()} 已確認`);
+  // 再存到 Supabase（背景執行）
+  await save();
+}
+
+function openContract(roomId){
+  const url = 'contract.html?roomId=' + roomId;
+  window.open(url, '_blank', 'width=1100,height=800');
+}
+
 function checkOverdueRepairs(){
   const today = new Date(); today.setHours(0,0,0,0);
   const overdueList = [];
@@ -4217,8 +4287,9 @@ function renderMgrRpt(){
     });
     return s+done.reduce((ss,t)=>ss+t.amount,0);
   },0);
-  const totalActual=paid.reduce((s,r)=>s+getActualRent(r),0)+elecPrepayMgr;
-  const totalExpected=rented.reduce((s,r)=>s+getActualRent(r),0);
+  const mk_mgr=monthKey();
+  const totalActual=paid.reduce((s,r)=>s+getActualRent(r,(payments[mk_mgr]||{})[r.id]),0)+elecPrepayMgr;
+  const totalExpected=rented.reduce((s,r)=>s+getActualRent(r,(payments[mk_mgr]||{})[r.id]),0);
 
   // 摘要卡片
   const sum=document.getElementById('mgrrpt-summary');
@@ -4249,7 +4320,8 @@ function renderMgrRpt(){
       const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
       return d&&!isNaN(d)&&d.getFullYear()===my2&&d.getMonth()+1===mm2;
     }).reduce((s,t)=>s+t.amount,0):0;
-    const elecMonthlyR=isPrepayR?0:(r.elec||0);
+    const _payR=(payments[mk_mgr]||{})[r.id];
+    const elecMonthlyR=isPrepayR?0:(_payR?.elecMonthlyAmount||r.elec||0);
     const elecDisplayR=isPrepayR?elecPrepayR:elecMonthlyR;
     const expectedR=isVacant?0:(r.rent||0)+elecMonthlyR;
     return `<tr style="${isVacant?'opacity:.6':''}">
@@ -4402,7 +4474,7 @@ function exportMgrRpt(){
     const isVacant=!r.tenant||!r.tenant.trim();
     const s=getStatus(r.id);
     const statusLabel=isVacant?'空房':s==='paid'?'已付款':s==='partial'?'部分付款':'未付款';
-    const elecMonthly=r.elecType==='monthly'?(r.elec||0):0;
+    const elecMonthly=r.elecType==='monthly'?(((payments[`${y}-${String(m).padStart(2,'0')}`]||{})[r.id]?.elecMonthlyAmount)||(r.elec||0)):0;
     const elecPrepay=(!isVacant&&r.elecType==='prepay')?(r.elecTopups||[]).filter(t=>{
       if(t.status!=='done'||t.doneWhenVacant) return false;
       const raw=t.doneAt||t.date||''; const d=raw?new Date(raw):null;
@@ -4599,6 +4671,9 @@ function startRealtimeSync(){
             elecAmount:p.elec_amount||null,
             actualAmount:p.actual_amount||null,
             diffAmount:p.diff_amount||null,
+            elecMonthlyAmount:p.elec_monthly_amount||null,
+            elecMonthlyConfirmedAt:p.elec_monthly_confirmed_at||null,
+            elecMonthlyBy:p.elec_monthly_by||null,
           };
         });
       }
@@ -4656,5 +4731,26 @@ function checkExpiryNotices(){
 
 </script>
 <div class="test-banner">🧪 測試版</div>
+
+<!-- 月結電費確認 Modal -->
+<div id="elec-monthly-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:var(--rxl);padding:1.5rem;width:320px;">
+    <div style="font-size:15px;font-weight:700;margin-bottom:1rem;">⚡ 確認月結電費</div>
+    <div id="elec-monthly-room-name" style="font-size:13px;color:var(--text2);margin-bottom:12px;"></div>
+    <div class="ff" style="margin-bottom:10px;">
+      <label>計費月份</label>
+      <select id="elec-monthly-mk" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);"></select>
+    </div>
+    <div class="ff" style="margin-bottom:1rem;">
+      <label>電費金額（元）</label>
+      <input type="number" id="elec-monthly-amount" placeholder="0"
+        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn" onclick="closeElecMonthlyModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmElecMonthly()">確認電費</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
